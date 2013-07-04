@@ -15,6 +15,7 @@ obj-$(CONFIG_CPU_FREQ_GOV_DYNAMIC_INTERACTIVE)  += cpufreq_dynamic_interactive.o
 ## LGE_SJIT 2012-02-01 [dojip.kim@lge.com] Add sanjose governor
 obj-$(CONFIG_CPU_FREQ_GOV_SANJOSE)	+= cpufreq_sanjose.o
 obj-$(CONFIG_CPU_FREQ_GOV_BADASS)    	+= cpufreq_badass.o
+obj-$(CONFIG_CPU_FREQ_GOV_INTELLIDEMAND)+= cpufreq_intellidemand.o
 
 # CPUfreq cross-arch helpers
 obj-$(CONFIG_CPU_FREQ_TABLE)		+= freq_table.o
