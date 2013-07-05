@@ -336,7 +336,6 @@ obj-$(CONFIG_OMAP_REMOTE_PROC)		+= remoteproc.o
 obj-$(CONFIG_OMAP_HSI_DEVICE)		+= omap_hsi.o
 obj-$(CONFIG_ION_OMAP)			+= omap4_ion.o
 obj-$(CONFIG_ARCH_OMAP4)		+= omap_dmm.o
-obj-$(CONFIG_RQ_STATS)      		+= rq_stats.o 
 
 ## LGE_SJIT_S 2011-08-25 [choongryeol.lee@lge.com] Port on K3.0
 obj-$(CONFIG_MACH_LGE) += lge/ \
