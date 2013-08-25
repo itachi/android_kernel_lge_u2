@@ -78,7 +78,7 @@ static int battery_friend_init(void)
 	int sysfs_result;
 
 
-	battery_friend_kobj = kobject_create_and_add("battery_Friend", kernel_kobj);
+	battery_friend_kobj = kobject_create_and_add("battery_friend", kernel_kobj);
 	if (!battery_friend_kobj) {
 		return -ENOMEM;
         }

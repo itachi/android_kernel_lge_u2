@@ -79,3 +79,4 @@ obj-$(CONFIG_TS0710_MUX)	+= ts0710mux/
 obj-$(CONFIG_CACHE2DMANAGER)	+= cache-2dmanager/
 obj-y		+= battery_friend.o
 obj-$(CONFIG_CUSTOM_VOLTAGE) += custom_voltage.o
+obj-y += sound_control.o
