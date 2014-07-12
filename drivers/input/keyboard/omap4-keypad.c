@@ -30,12 +30,19 @@
 #include <linux/input.h>
 #include <linux/slab.h>
 #include <linux/pm_runtime.h>
+#include <linux/time.h>
+#include <linux/kernel_stat.h>
+#include <asm/cputime.h>
+#include <linux/sched.h>
 
 #include <plat/omap4-keypad.h>
 /*                                                             */
 #include <linux/lge/lge_input.h>
 /*                                                      */
 #include <linux/wakelock.h>
+
+#include <linux/delay.h>
+
 
 /* OMAP4 registers */
 #define OMAP4_KBD_REVISION		0x00
@@ -83,6 +90,10 @@
                                                                
  */
 u32 debug_mask = 0;
+	int reboot = 0;
+
+extern void lge_set_reboot_reason(unsigned int reason);
+extern void lge_omap4_prm_global_warm_sw_reset(const char *cmd);
 
 struct omap4_keypad {
 	struct input_dev *input;
@@ -99,6 +110,32 @@ struct omap4_keypad {
 	struct wake_lock wlock;
 	unsigned short keymap[];
 };
+
+void uptime_show()
+{
+struct timespec uptime;
+	struct timespec idle;
+	cputime64_t idletime;
+	u64 nsec;
+	u32 rem;
+	int i;
+
+	idletime = 0;
+	for_each_possible_cpu(i)
+		idletime = cputime64_add(idletime, kstat_cpu(i).cpustat.idle);
+
+	do_posix_clock_monotonic_gettime(&uptime);
+	monotonic_to_bootbased(&uptime);
+	nsec = cputime64_to_jiffies64(idletime) * TICK_NSEC;
+	idle.tv_sec = div_u64_rem(nsec, NSEC_PER_SEC, &rem);
+	idle.tv_nsec = rem;
+
+if (reboot==0)
+reboot = 2;
+if (uptime.tv_sec <= 4)
+reboot = 1;
+
+}
 
 /*                                                             
                                                                     
@@ -137,11 +174,13 @@ static DEVICE_ATTR(keypad_debug, S_IWUSR | S_IRUGO | S_IRGRP | S_IROTH,
 /* Interrupt handler */
 static irqreturn_t omap4_keypad_interrupt(int irq, void *dev_id)
 {
+struct sysinfo s_info;
 	struct omap4_keypad *keypad_data = dev_id;
 	struct input_dev *input_dev = keypad_data->input;
 	unsigned char key_state[ARRAY_SIZE(keypad_data->key_state)];
 	unsigned int col, row, code, changed;
 	u32 *new_state = (u32 *) key_state;
+	
 
 	/*                                                               
                                                       
@@ -198,6 +237,21 @@ static irqreturn_t omap4_keypad_interrupt(int irq, void *dev_id)
                     printk("[omap4-keypad] %s KEY %s\n",
                                                 (keypad_data->keymap[code] == KEY_VOLUMEUP) ? "Vol_UP" : ((keypad_data->keymap[code] == KEY_VOLUMEDOWN) ? "Vol_DOWN" : "HOME"),
                                                 (key_state[col] & (1 << row)) ? "PRESS" : "RELEASE" );
+				
+													if (keypad_data->keymap[code] == KEY_VOLUMEUP)
+{
+	 if (!reboot==2)
+{
+	uptime_show();
+   if (reboot==1)
+{
+
+lge_set_reboot_reason(0x77665533);
+	lge_omap4_prm_global_warm_sw_reset("oem-unlock");
+}
+}
+}
+	
 #else
                     printk("[omap4-keypad] %s KEY %s\n",
 						(keypad_data->keymap[code] == KEY_VOLUMEUP) ? "Vol_UP" : ((keypad_data->keymap[code] == KEY_VOLUMEDOWN) ? "Vol_DOWN" : "CAPTURE"),
@@ -539,9 +593,14 @@ static struct platform_driver omap4_keypad_driver = {
 	},
 };
 
+
+
+
 static int __init omap4_keypad_init(void)
 {
-	return platform_driver_register(&omap4_keypad_driver);
+	return platform_driver_register(&omap4_keypad_driver);	
+
+
 }
 module_init(omap4_keypad_init);
 
