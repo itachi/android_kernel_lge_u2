@@ -134,5 +134,12 @@ config LUT_FILE_TUNING
     help
         This is Display Sub System Look-up-table Tuning
 
+config HX8389_NATURE
+	bool "Gamma tuning for more natural colors"
+	depends on PANEL_HX8389
+	default n
+	help
+		This tunes colors for more natural by sysfs interface
+
 ## LGE_SJIT_E 2011-08-29 [choongryeol.lee@lge.com]
 endmenu

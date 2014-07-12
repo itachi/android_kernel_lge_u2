@@ -144,6 +144,7 @@ static struct panel_config panel_configs[] = {
 			.hfp = 20, //20
 			.hsw =10,
 			.hbp = 47, // 47
+
 		},
 		.sleep		= {
 			.sleep_in	= 20,
@@ -756,6 +757,8 @@ static ssize_t display_gamma_tuning_show(struct device *dev,
 {
 	return snprintf(buf, PAGE_SIZE, "%d,%d,%d",red,green,blue);
 }
+
+
 static ssize_t display_gamma_tuning_store(struct device *dev,
 		struct device_attribute *attr,
 		const char *buf, size_t size)
@@ -766,6 +769,27 @@ static ssize_t display_gamma_tuning_store(struct device *dev,
 	dispc_set_gamma_rgb(OMAP_DSS_CHANNEL_LCD2, 0,red,green,blue);
 	return size;
 }
+
+#ifdef CONFIG_HX8389_NATURE
+
+extern int dispc_set_nature(int enbl);
+static int enbl = 1;
+static ssize_t nature_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d",enbl);
+}
+static ssize_t nature_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t size)
+{
+	sscanf(buf, "%d",&enbl);
+	dispc_set_nature(enbl);
+	return size;
+}
+
+
+#endif
 
 static ssize_t display_init_code_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -850,7 +874,9 @@ static ssize_t display_init_code_store(struct device *dev,
 }
 
 static DEVICE_ATTR(init_code, 0660, display_init_code_show, display_init_code_store);
-
+#ifdef CONFIG_HX8389_NATURE
+static DEVICE_ATTR(nature, 0660, nature_show, nature_store);
+#endif
 static DEVICE_ATTR(gamma_tuning, 0660, display_gamma_tuning_show, display_gamma_tuning_store);
 //                                                                                                                   
 static ssize_t display_porch_value_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
@@ -1082,9 +1108,11 @@ static struct attribute *hx8389_panel_attrs[] = {
 	&dev_attr_cabc_available_modes.attr,
 	&dev_attr_esd_interval.attr,
 	&dev_attr_ulps.attr,
-	&dev_attr_ulps_timeout.attr,
-//                                                                                                                   
+	&dev_attr_ulps_timeout.attr,                                                                                                                  
     &dev_attr_gamma_tuning.attr,
+#ifdef CONFIG_HX8389_NATURE
+	&dev_attr_nature.attr,
+#endif
 #if defined(CONFIG_LUT_FILE_TUNING)
     &dev_attr_file_tuning.attr,
 #endif
@@ -1092,8 +1120,7 @@ static struct attribute *hx8389_panel_attrs[] = {
     &dev_attr_clock_value.attr,
     &dev_attr_ssc_enable.attr,
     &dev_attr_init_code.attr,
-
-//                                                                                                                   
+                                                                                                                   
 	NULL,
 };
 
