@@ -214,19 +214,19 @@ static struct regulator_consumer_supply twl6030_vaux3_supply[] = {
 	};
 
 // match the constraint
-TWL6030_REGULATOR_DEVICE(vmmc,  1200000, 3300000, 0, 1);	// SD
-TWL6030_REGULATOR_DEVICE(vpp,   1800000, 1800000, 0, 0);	// OMAP_VPP_CUST
-TWL6030_REGULATOR_DEVICE(vusim, 3200000, 3200000, 0, 0);	// Vibrator
+TWL6030_REGULATOR_DEVICE(vmmc,  1200000, 3200000, 0, 1);	// SD
+TWL6030_REGULATOR_DEVICE(vpp,   1700000, 1700000, 0, 0);	// OMAP_VPP_CUST
+TWL6030_REGULATOR_DEVICE(vusim, 2800000, 2800000, 0, 0);	// Vibrator
 /* The Vusb is defined directly instead of below def() for 172777*/
 /* TWL6030_REGULATOR_DEVICE(vusb, 	3300000, 3300000, 0,0);	// USB */
 //TWL6030_REGULATOR_DEVICE(vaux1, 3000000, 3000000, 0, 1);	// eMMC
-TWL6030_REGULATOR_DEVICE(vaux2, 1800000, 1800000, 0, 0);	// MHL 1.8V
+TWL6030_REGULATOR_DEVICE(vaux2, 1600000, 1600000, 0, 0);	// Touch
 TWL6030_REGULATOR_DEVICE(vaux3, 1800000, 1800000, 0, 0);	// Cam
 
 static struct regulator_init_data twl6030_vaux1_data = {
 	.constraints = {
-		.min_uV = 3000000,
-		.max_uV = 3000000,
+		.min_uV = 2700000,
+		.max_uV = 2700000,
 		.apply_uV = true,
 		.always_on = true,
 		.boot_on = true,
@@ -246,8 +246,8 @@ static struct regulator_init_data twl6030_vaux1_data = {
 
 static struct regulator_init_data twl6030_vana_data = {
 	.constraints = {
-		.min_uV = 2100000,
-		.max_uV = 2100000,
+		.min_uV = 1500000,
+		.max_uV = 1500000,
 		.valid_modes_mask = REGULATOR_MODE_NORMAL
 			| REGULATOR_MODE_STANDBY,
 		.valid_ops_mask = REGULATOR_CHANGE_MODE
@@ -260,7 +260,7 @@ static struct regulator_init_data twl6030_vana_data = {
 
 static struct regulator_init_data twl6030_vcxio_data = {
 	.constraints = {
-		.min_uV = 1800000,
+		.min_uV = 1000000,
 		.max_uV = 1800000,
 		.valid_modes_mask = REGULATOR_MODE_NORMAL
 			| REGULATOR_MODE_STANDBY,
@@ -279,8 +279,8 @@ static struct regulator_init_data twl6030_vcxio_data = {
 
 static struct regulator_init_data twl6030_vdac_data = {
 	.constraints = {
-		.min_uV = 1800000,
-		.max_uV = 1800000,
+		.min_uV = 1000000,
+		.max_uV = 1000000,
 		.valid_modes_mask = REGULATOR_MODE_NORMAL
 			| REGULATOR_MODE_STANDBY,
 		.valid_ops_mask = REGULATOR_CHANGE_MODE
@@ -345,7 +345,7 @@ static int u2_batt_table[] = {
 };
 
 static struct twl4030_bci_platform_data u2_bci_data = {
-	.monitoring_interval = 10,
+	.monitoring_interval = 50,
 	.max_charger_currentmA = 1500,
 	.max_charger_voltagemV = 4560,
 	.max_bat_voltagemV = 4200,
@@ -892,8 +892,8 @@ int __init lge_i2c_init(void)
 	if (system_rev > LGE_PCB_EVB) {
 		/* regulator */
 		twl6030_vaux2_data.consumer_supplies = twl6030_vaux2_supply;
-		twl6030_vaux2_data.constraints.min_uV = 3000000;
-		twl6030_vaux2_data.constraints.max_uV = 3000000;
+		twl6030_vaux2_data.constraints.min_uV = 2050000;
+		twl6030_vaux2_data.constraints.max_uV = 2050000;
 		twl6030_vaux2_data.constraints.always_on = 0;
 		twl6030_vaux2_data.constraints.boot_on = 0;
 	} else {
