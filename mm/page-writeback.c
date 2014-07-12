@@ -35,6 +35,7 @@
 #include <linux/buffer_head.h>
 #include <linux/pagevec.h>
 #include <trace/events/writeback.h>
+extern bool battery_friend_active;
 
 /*
  * After a CPU has dirtied this many pages, balance_dirty_pages_ratelimited
@@ -139,6 +140,14 @@ static struct prop_descriptor vm_dirties;
 static int calc_period_shift(void)
 {
 	unsigned long dirty_total;
+	if (likely(battery_friend_active))
+	{
+	vm_dirty_ratio = 90;
+	}
+	else
+	{
+	vm_dirty_ratio = 70;
+	}
 
 	if (vm_dirty_bytes)
 		dirty_total = vm_dirty_bytes / PAGE_SIZE;
@@ -186,6 +195,14 @@ int dirty_ratio_handler(struct ctl_table *table, int write,
 		void __user *buffer, size_t *lenp,
 		loff_t *ppos)
 {
+	if (likely(battery_friend_active))
+	{
+	vm_dirty_ratio = 90;
+	}
+	else
+	{
+	vm_dirty_ratio = 70;
+	}
 	int old_ratio = vm_dirty_ratio;
 	int ret;
 
@@ -411,6 +428,15 @@ void global_dirty_limits(unsigned long *pbackground, unsigned long *pdirty)
 	unsigned long background;
 	unsigned long dirty;
 	unsigned long uninitialized_var(available_memory);
+	if (likely(battery_friend_active))
+	{
+	vm_dirty_ratio = 90;
+	}
+	else
+	{
+	vm_dirty_ratio = 70;
+	}
+
 	struct task_struct *tsk;
 
 	if (!vm_dirty_bytes || !dirty_background_bytes)

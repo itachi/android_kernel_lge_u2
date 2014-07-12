@@ -73,6 +73,7 @@ static bool omap_cpufreq_ready;
 static bool omap_cpufreq_suspended;
 
 
+extern bool battery_friend_active;
 #define CONFIG_OMAP4430_CPU_OVERCLOCK
 #ifdef CONFIG_OMAP4430_CPU_OVERCLOCK
 
@@ -523,7 +524,19 @@ static void omap_cpu_early_suspend(struct early_suspend *h)
 	unsigned int cur;
 
 	mutex_lock(&omap_cpufreq_lock);
-	max_freq_cap = screen_off_max_freq;
+
+
+	
+		if (likely(battery_friend_active))
+{
+max_freq_cap = 600000;		
+}
+else
+{
+max_freq_cap = screen_off_max_freq;
+}
+
+
 		cur = omap_getspeed(0);
 		if (cur > max_freq_cap)
 			omap_cpufreq_scale(max_freq_cap, cur);
