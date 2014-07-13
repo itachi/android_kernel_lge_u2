@@ -302,6 +302,9 @@ done_calib:
 			u_volt_current);
 	}
 
+	if(volt_data->volt_nominal == 1010000)
+	volt_data->volt_calibrated = u_volt_safe - 75;
+	else
 	volt_data->volt_calibrated = u_volt_safe - 99;
 	/* Setup my dynamic voltage for the next calibration for this opp */
 	volt_data->volt_dynamic_nominal = omap_get_dyn_nominal(volt_data);
