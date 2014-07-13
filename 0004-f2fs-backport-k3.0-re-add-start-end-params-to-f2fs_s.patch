@@ -1,0 +1,55 @@
+From 383ebf8b7872a4cbf9dfc9b325ec6e93b629133a Mon Sep 17 00:00:00 2001
+From: Hashcode <hashcode0f@gmail.com>
+Date: Wed, 28 May 2014 14:18:31 -0700
+Subject: [PATCH 004/100] f2fs: backport k3.0 re-add start/end params to
+ f2fs_sync_file
+
+Change-Id: I47df9dba3a37eae26d4d7bec9ed4700b14ea7f84
+
+Signed-off-by: artas182x <artas182x@gmail.com>
+---
+ fs/f2fs/f2fs.h | 2 +-
+ fs/f2fs/file.c | 7 ++++++-
+ 2 files changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+index 8cd7c84..af51a0b 100644
+--- a/fs/f2fs/f2fs.h
++++ b/fs/f2fs/f2fs.h
+@@ -1026,7 +1026,7 @@ static inline int f2fs_readonly(struct super_block *sb)
+ /*
+  * file.c
+  */
+-int f2fs_sync_file(struct file *, int);
++int f2fs_sync_file(struct file *, loff_t, loff_t, int);
+ void truncate_data_blocks(struct dnode_of_data *);
+ int truncate_blocks(struct inode *, u64);
+ void f2fs_truncate(struct inode *);
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index 485919d..a72ecd9 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -110,7 +110,7 @@ static int get_parent_ino(struct inode *inode, nid_t *pino)
+ 	return 1;
+ }
+ 
+-int f2fs_sync_file(struct file *file, int datasync)
++int f2fs_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+ {
+ 	struct inode *inode = file->f_mapping->host;
+ 	struct f2fs_sb_info *sbi = F2FS_SB(inode->i_sb);
+@@ -126,6 +126,11 @@ int f2fs_sync_file(struct file *file, int datasync)
+ 		return 0;
+ 
+ 	trace_f2fs_sync_file_enter(inode);
++	ret = filemap_write_and_wait_range(inode->i_mapping, start, end);
++	if (ret) {
++		trace_f2fs_sync_file_exit(inode, need_cp, datasync, ret);
++		return ret;
++	}
+ 
+ 	/* guarantee free sections for fsync */
+ 	f2fs_balance_fs(sbi);
+-- 
+1.9.1
+

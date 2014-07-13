@@ -1,0 +1,26 @@
+From 6a38c06e66aa3afd89d4bd9b349caee84c9ce296 Mon Sep 17 00:00:00 2001
+From: artas182x <artas182x@gmail.com>
+Date: Sun, 13 Jul 2014 19:09:32 +0200
+Subject: [PATCH 093/100] Hack smartreflex to undervolt all calibrated
+ frequences
+
+---
+ arch/arm/mach-omap2/smartreflex-class1p5.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm/mach-omap2/smartreflex-class1p5.c b/arch/arm/mach-omap2/smartreflex-class1p5.c
+index 6faa66d..d8ca9ac 100644
+--- a/arch/arm/mach-omap2/smartreflex-class1p5.c
++++ b/arch/arm/mach-omap2/smartreflex-class1p5.c
+@@ -302,7 +302,7 @@ done_calib:
+ 			u_volt_current);
+ 	}
+ 
+-	volt_data->volt_calibrated = u_volt_safe;
++	volt_data->volt_calibrated = u_volt_safe - 99;
+ 	/* Setup my dynamic voltage for the next calibration for this opp */
+ 	volt_data->volt_dynamic_nominal = omap_get_dyn_nominal(volt_data);
+ 
+-- 
+1.9.1
+

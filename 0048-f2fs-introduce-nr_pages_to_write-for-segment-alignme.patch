@@ -1,0 +1,155 @@
+From 5059c319bcf9e1b37455a55cb364d1cf9635582e Mon Sep 17 00:00:00 2001
+From: Jaegeuk Kim <jaegeuk.kim@samsung.com>
+Date: Tue, 18 Mar 2014 13:47:11 +0900
+Subject: [PATCH 048/100] f2fs: introduce nr_pages_to_write for segment
+ alignment
+
+This patch introduces nr_pages_to_write to align page writes to the segment
+or other operational unit size, which can be tuned according to the system
+environment.
+
+Signed-off-by: Jaegeuk Kim <jaegeuk.kim@samsung.com>
+Signed-off-by: artas182x <artas182x@gmail.com>
+---
+ fs/f2fs/checkpoint.c | 11 ++++++-----
+ fs/f2fs/data.c       | 12 +++---------
+ fs/f2fs/node.c       |  8 +++-----
+ fs/f2fs/segment.h    | 24 ++++++++++++++++++++++++
+ 4 files changed, 36 insertions(+), 19 deletions(-)
+
+diff --git a/fs/f2fs/checkpoint.c b/fs/f2fs/checkpoint.c
+index 3838685..9e49eb6 100644
+--- a/fs/f2fs/checkpoint.c
++++ b/fs/f2fs/checkpoint.c
+@@ -186,18 +186,19 @@ static int f2fs_write_meta_pages(struct address_space *mapping,
+ 				struct writeback_control *wbc)
+ {
+ 	struct f2fs_sb_info *sbi = F2FS_SB(mapping->host->i_sb);
+-	int nrpages = nr_pages_to_skip(sbi, META);
+-	long written;
++	long diff, written;
+ 
+ 	/* collect a number of dirty meta pages and write together */
+-	if (wbc->for_kupdate || get_pages(sbi, F2FS_DIRTY_META) < nrpages)
++	if (wbc->for_kupdate ||
++		get_pages(sbi, F2FS_DIRTY_META) < nr_pages_to_skip(sbi, META))
+ 		goto skip_write;
+ 
+ 	/* if mounting is failed, skip writing node pages */
+ 	mutex_lock(&sbi->cp_mutex);
+-	written = sync_meta_pages(sbi, META, nrpages);
++	diff = nr_pages_to_write(sbi, META, wbc);
++	written = sync_meta_pages(sbi, META, wbc->nr_to_write);
+ 	mutex_unlock(&sbi->cp_mutex);
+-	wbc->nr_to_write -= written;
++	wbc->nr_to_write = max((long)0, wbc->nr_to_write - written - diff);
+ 	return 0;
+ 
+ skip_write:
+diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
+index cb38b49..f4a9eb4 100644
+--- a/fs/f2fs/data.c
++++ b/fs/f2fs/data.c
+@@ -849,8 +849,6 @@ redirty_out:
+ 	return AOP_WRITEPAGE_ACTIVATE;
+ }
+ 
+-#define MAX_DESIRED_PAGES_WP	4096
+-
+ static int __f2fs_writepage(struct page *page, struct writeback_control *wbc,
+ 			void *data)
+ {
+@@ -867,7 +865,7 @@ static int f2fs_write_data_pages(struct address_space *mapping,
+ 	struct f2fs_sb_info *sbi = F2FS_SB(inode->i_sb);
+ 	bool locked = false;
+ 	int ret;
+-	long excess_nrtw = 0, desired_nrtw;
++	long diff;
+ 
+ 	/* deal with chardevs and other special file */
+ 	if (!mapping->a_ops->writepage)
+@@ -877,11 +875,7 @@ static int f2fs_write_data_pages(struct address_space *mapping,
+ 			get_dirty_dents(inode) < nr_pages_to_skip(sbi, DATA))
+ 		goto skip_write;
+ 
+-	if (wbc->nr_to_write < MAX_DESIRED_PAGES_WP) {
+-		desired_nrtw = MAX_DESIRED_PAGES_WP;
+-		excess_nrtw = desired_nrtw - wbc->nr_to_write;
+-		wbc->nr_to_write = desired_nrtw;
+-	}
++	diff = nr_pages_to_write(sbi, DATA, wbc);
+ 
+ 	if (!S_ISDIR(inode->i_mode)) {
+ 		mutex_lock(&sbi->writepages);
+@@ -895,7 +889,7 @@ static int f2fs_write_data_pages(struct address_space *mapping,
+ 
+ 	remove_dirty_dir_inode(inode);
+ 
+-	wbc->nr_to_write -= excess_nrtw;
++	wbc->nr_to_write = max((long)0, wbc->nr_to_write - diff);
+ 	return ret;
+ 
+ skip_write:
+diff --git a/fs/f2fs/node.c b/fs/f2fs/node.c
+index 125d773..424f1b7 100644
+--- a/fs/f2fs/node.c
++++ b/fs/f2fs/node.c
+@@ -1201,7 +1201,7 @@ static int f2fs_write_node_pages(struct address_space *mapping,
+ 			    struct writeback_control *wbc)
+ {
+ 	struct f2fs_sb_info *sbi = F2FS_SB(mapping->host->i_sb);
+-	long nr_to_write = wbc->nr_to_write;
++	long diff;
+ 
+ 	/* balancing f2fs's metadata in background */
+ 	f2fs_balance_fs_bg(sbi);
+@@ -1210,12 +1210,10 @@ static int f2fs_write_node_pages(struct address_space *mapping,
+ 	if (get_pages(sbi, F2FS_DIRTY_NODES) < nr_pages_to_skip(sbi, NODE))
+ 		goto skip_write;
+ 
+-	/* if mounting is failed, skip writing node pages */
+-	wbc->nr_to_write = 3 * max_hw_blocks(sbi);
++	diff = nr_pages_to_write(sbi, NODE, wbc);
+ 	wbc->sync_mode = WB_SYNC_NONE;
+ 	sync_node_pages(sbi, 0, wbc);
+-	wbc->nr_to_write = nr_to_write - (3 * max_hw_blocks(sbi) -
+-						wbc->nr_to_write);
++	wbc->nr_to_write = max((long)0, wbc->nr_to_write - diff);
+ 	return 0;
+ 
+ skip_write:
+diff --git a/fs/f2fs/segment.h b/fs/f2fs/segment.h
+index bbd9761..9fc46ee 100644
+--- a/fs/f2fs/segment.h
++++ b/fs/f2fs/segment.h
+@@ -683,3 +683,27 @@ static inline int nr_pages_to_skip(struct f2fs_sb_info *sbi, int type)
+ 	else
+ 		return 0;
+ }
++
++/*
++ * When writing pages, it'd better align nr_to_write for segment size.
++ */
++static inline long nr_pages_to_write(struct f2fs_sb_info *sbi, int type,
++					struct writeback_control *wbc)
++{
++	long nr_to_write, desired;
++
++	if (wbc->sync_mode != WB_SYNC_NONE)
++		return 0;
++
++	nr_to_write = wbc->nr_to_write;
++
++	if (type == DATA)
++		desired = 4096;
++	else if (type == NODE)
++		desired = 3 * max_hw_blocks(sbi);
++	else
++		desired = MAX_BIO_BLOCKS(max_hw_blocks(sbi));
++
++	wbc->nr_to_write = desired;
++	return desired - nr_to_write;
++}
+-- 
+1.9.1
+

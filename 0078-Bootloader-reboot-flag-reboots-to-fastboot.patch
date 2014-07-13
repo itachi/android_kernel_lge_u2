@@ -1,0 +1,25 @@
+From dedafe92f19a53c863431153aed275fbea9553f2 Mon Sep 17 00:00:00 2001
+From: artas182x <artas182x@gmail.com>
+Date: Sat, 12 Jul 2014 20:04:38 +0200
+Subject: [PATCH 078/100] Bootloader reboot flag reboots to fastboot
+
+---
+ arch/arm/mach-omap2/prm44xx.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm/mach-omap2/prm44xx.c b/arch/arm/mach-omap2/prm44xx.c
+index 30f50b7..3baaf48 100644
+--- a/arch/arm/mach-omap2/prm44xx.c
++++ b/arch/arm/mach-omap2/prm44xx.c
+@@ -227,7 +227,7 @@ void lge_omap4_prm_global_warm_sw_reset(const char *cmd)
+ 			/* reboot and go into the fastboot mode in LK */
+ 			restart_reason = 0x77665544;
+ 			v |= OMAP4430_RST_GLOBAL_COLD_SW_MASK;
+-		} else if (!strcmp(cmd, "oem-unlock")) {
++		} else if (!strcmp(cmd, "oem-unlock") || !strcmp(cmd, "bootloader")) {
+ 			/* reboot and go into the unlock mode in LK */
+ 			restart_reason = 0x77665533;
+ 			v |= OMAP4430_RST_GLOBAL_COLD_SW_MASK;
+-- 
+1.9.1
+

@@ -1,0 +1,63 @@
+From 9076ae6f82c3c816bcdc801dd2fd62e24fa2326f Mon Sep 17 00:00:00 2001
+From: Jaegeuk Kim <jaegeuk.kim@samsung.com>
+Date: Thu, 20 Mar 2014 22:21:08 +0900
+Subject: [PATCH 056/100] f2fs: avoid RECLAIM_FS-ON-W warning
+
+This patch should resolve the following possible bug.
+
+RECLAIM_FS-ON-W at:
+ mark_held_locks+0xb9/0x140
+ lockdep_trace_alloc+0x85/0xf0
+ __kmalloc+0x53/0x1d0
+ read_all_xattrs+0x3d1/0x3f0 [f2fs]
+ f2fs_getxattr+0x4f/0x100 [f2fs]
+ f2fs_get_acl+0x4c/0x290 [f2fs]
+ get_acl+0x4f/0x80
+ posix_acl_create+0x72/0x180
+ f2fs_init_acl+0x29/0xcc [f2fs]
+ __f2fs_add_link+0x259/0x710 [f2fs]
+ f2fs_create+0xad/0x1c0 [f2fs]
+ vfs_create+0xed/0x150
+ do_last+0xd36/0xed0
+ path_openat+0xc5/0x680
+ do_filp_open+0x43/0xa0
+ do_sys_open+0x13c/0x230
+ SyS_creat+0x1e/0x20
+ system_call_fastpath+0x16/0x1b
+
+Signed-off-by: Jaegeuk Kim <jaegeuk.kim@samsung.com>
+Signed-off-by: artas182x <artas182x@gmail.com>
+---
+ fs/f2fs/acl.c   | 2 +-
+ fs/f2fs/xattr.c | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/f2fs/acl.c b/fs/f2fs/acl.c
+index bc3c33b..8a67ac8 100644
+--- a/fs/f2fs/acl.c
++++ b/fs/f2fs/acl.c
+@@ -169,7 +169,7 @@ static struct posix_acl *f2fs_get_acl(struct inode *inode, int type)
+ 
+ 	retval = f2fs_getxattr(inode, name_index, "", NULL, 0);
+ 	if (retval > 0) {
+-		value = kmalloc(retval, GFP_KERNEL);
++		value = kmalloc(retval, GFP_F2FS_ZERO);
+ 		if (!value)
+ 			return ERR_PTR(-ENOMEM);
+ 		retval = f2fs_getxattr(inode, name_index, "", value, retval);
+diff --git a/fs/f2fs/xattr.c b/fs/f2fs/xattr.c
+index dd703e6..acd7158 100644
+--- a/fs/f2fs/xattr.c
++++ b/fs/f2fs/xattr.c
+@@ -293,7 +293,7 @@ static void *read_all_xattrs(struct inode *inode, struct page *ipage)
+ 
+ 	inline_size = inline_xattr_size(inode);
+ 
+-	txattr_addr = kzalloc(inline_size + size, GFP_KERNEL);
++	txattr_addr = kzalloc(inline_size + size, GFP_F2FS_ZERO);
+ 	if (!txattr_addr)
+ 		return NULL;
+ 
+-- 
+1.9.1
+

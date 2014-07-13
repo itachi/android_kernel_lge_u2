@@ -1,0 +1,68 @@
+From 15214c545fb6d244fa08bc4b598ddd513e1cfa92 Mon Sep 17 00:00:00 2001
+From: Jaegeuk Kim <jaegeuk.kim@samsung.com>
+Date: Tue, 28 Jan 2014 14:54:07 +0900
+Subject: [PATCH 012/100] f2fs: fix a build warning
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+This patch modifies flow a little bit to avoid the following build warnings.
+
+src/fs/f2fs/recovery.c: In function ‘check_index_in_prev_nodes’:
+src/fs/f2fs/recovery.c:288:51: warning: ‘sum.<U5390>.<U52f8>.ofs_in_node’ may
+	be used uninitialized in this function [-Wmaybe-uninitialized]
+src/fs/f2fs/recovery.c:260:23: warning: ‘sum.nid’ may be used uninitialized
+	in this function [-Wmaybe-uninitialized]
+
+Signed-off-by: Jaegeuk Kim <jaegeuk.kim@samsung.com>
+Signed-off-by: artas182x <artas182x@gmail.com>
+---
+ fs/f2fs/recovery.c | 19 ++++++++-----------
+ 1 file changed, 8 insertions(+), 11 deletions(-)
+
+diff --git a/fs/f2fs/recovery.c b/fs/f2fs/recovery.c
+index bda04a0..72adbbf 100644
+--- a/fs/f2fs/recovery.c
++++ b/fs/f2fs/recovery.c
+@@ -219,11 +219,11 @@ static int check_index_in_prev_nodes(struct f2fs_sb_info *sbi,
+ 	struct seg_entry *sentry;
+ 	unsigned int segno = GET_SEGNO(sbi, blkaddr);
+ 	unsigned short blkoff = GET_BLKOFF_FROM_SEG0(sbi, blkaddr);
++	struct f2fs_summary_block *sum_node;
+ 	struct f2fs_summary sum;
++	struct page *sum_page, *node_page;
+ 	nid_t ino, nid;
+-	void *kaddr;
+ 	struct inode *inode;
+-	struct page *node_page;
+ 	unsigned int offset;
+ 	block_t bidx;
+ 	int i;
+@@ -237,18 +237,15 @@ static int check_index_in_prev_nodes(struct f2fs_sb_info *sbi,
+ 		struct curseg_info *curseg = CURSEG_I(sbi, i);
+ 		if (curseg->segno == segno) {
+ 			sum = curseg->sum_blk->entries[blkoff];
+-			break;
++			goto got_it;
+ 		}
+ 	}
+-	if (i > CURSEG_COLD_DATA) {
+-		struct page *sum_page = get_sum_page(sbi, segno);
+-		struct f2fs_summary_block *sum_node;
+-		kaddr = page_address(sum_page);
+-		sum_node = (struct f2fs_summary_block *)kaddr;
+-		sum = sum_node->entries[blkoff];
+-		f2fs_put_page(sum_page, 1);
+-	}
+ 
++	sum_page = get_sum_page(sbi, segno);
++	sum_node = (struct f2fs_summary_block *)page_address(sum_page);
++	sum = sum_node->entries[blkoff];
++	f2fs_put_page(sum_page, 1);
++got_it:
+ 	/* Use the locked dnode page and inode */
+ 	nid = le32_to_cpu(sum.nid);
+ 	if (dn->inode->i_ino == nid) {
+-- 
+1.9.1
+

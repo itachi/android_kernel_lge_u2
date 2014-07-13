@@ -1,0 +1,25 @@
+From f082b7f7eed35087f06f1bf21b26e672923474e8 Mon Sep 17 00:00:00 2001
+From: artas182x <artas182x@gmail.com>
+Date: Sat, 12 Jul 2014 18:20:13 +0200
+Subject: [PATCH 067/100] Force loading module with not matching magic
+
+---
+ kernel/module.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/kernel/module.c b/kernel/module.c
+index 874c060..3aa2c69 100644
+--- a/kernel/module.c
++++ b/kernel/module.c
+@@ -2490,6 +2490,8 @@ static int check_modinfo(struct module *mod, struct load_info *info)
+ 	} else if (!same_magic(modmagic, vermagic, info->index.vers)) {
+ 		printk(KERN_ERR "%s: version magic '%s' should be '%s'\n",
+ 		       mod->name, modmagic, vermagic);
++		printk(KERN_WARNING "%s: [artas182x] forcing load\n",
++		       mod->name);
+ 		return -ENOEXEC;
+ 	}
+ 
+-- 
+1.9.1
+

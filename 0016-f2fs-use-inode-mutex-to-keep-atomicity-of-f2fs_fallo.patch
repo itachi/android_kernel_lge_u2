@@ -1,0 +1,43 @@
+From 83eb4f975d9a6f15e5c0017a200f7946522a639b Mon Sep 17 00:00:00 2001
+From: Chao Yu <chao2.yu@samsung.com>
+Date: Tue, 28 Jan 2014 10:29:26 +0800
+Subject: [PATCH 016/100] f2fs: use inode mutex to keep atomicity of
+ f2fs_falloc
+
+Previously without protection of inode mutex, f2fs_falloc and other data
+correlated operations will interfere with each other.
+So let's use inode mutex to keep atomicity of f2fs_falloc.
+
+Signed-off-by: Chao Yu <chao2.yu@samsung.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk.kim@samsung.com>
+Signed-off-by: artas182x <artas182x@gmail.com>
+---
+ fs/f2fs/file.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index a72ecd9..facf03d 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -561,6 +561,8 @@ static long f2fs_fallocate(struct file *file, int mode,
+ 	if (mode & ~(FALLOC_FL_KEEP_SIZE | FALLOC_FL_PUNCH_HOLE))
+ 		return -EOPNOTSUPP;
+ 
++	mutex_lock(&inode->i_mutex);
++
+ 	if (mode & FALLOC_FL_PUNCH_HOLE)
+ 		ret = punch_hole(inode, offset, len);
+ 	else
+@@ -570,6 +572,9 @@ static long f2fs_fallocate(struct file *file, int mode,
+ 		inode->i_mtime = inode->i_ctime = CURRENT_TIME;
+ 		mark_inode_dirty(inode);
+ 	}
++
++	mutex_unlock(&inode->i_mutex);
++
+ 	trace_f2fs_fallocate(inode, mode, offset, len, ret);
+ 	return ret;
+ }
+-- 
+1.9.1
+

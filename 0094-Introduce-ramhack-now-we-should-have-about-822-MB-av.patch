@@ -1,0 +1,28 @@
+From 7fff29cb73326987724a33515e1ad719028a3d65 Mon Sep 17 00:00:00 2001
+From: artas182x <artas182x@gmail.com>
+Date: Sun, 13 Jul 2014 19:12:30 +0200
+Subject: [PATCH 094/100] Introduce ramhack - now we should have about 822 MB
+ avilable to userspace
+
+---
+ arch/arm/mach-omap2/omap4_ion.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/arch/arm/mach-omap2/omap4_ion.c b/arch/arm/mach-omap2/omap4_ion.c
+index 89125c7..15d77e9 100644
+--- a/arch/arm/mach-omap2/omap4_ion.c
++++ b/arch/arm/mach-omap2/omap4_ion.c
+@@ -117,9 +117,7 @@ void __init omap_ion_init(void)
+ #endif
+ 		omap4_ducati_heap_size = (SZ_1M * 105);
+ 		omap4_ion_heap_nonsec_tiler_mem_size = nonsecure;
+-		omap4_ion_heap_tiler_mem_size =
+-					 (ALIGN(omap4_ion_pdata.tiler2d_size +
+-					 nonsecure, SZ_2M) - nonsecure);
++		omap4_ion_heap_tiler_mem_size = (SZ_1M * 43);
+ 	}
+ 
+ 	/* carveout addresses */
+-- 
+1.9.1
+

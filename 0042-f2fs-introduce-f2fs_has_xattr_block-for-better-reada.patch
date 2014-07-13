@@ -1,0 +1,72 @@
+From d445738eb1d0dc45f8030310b875241103ae672d Mon Sep 17 00:00:00 2001
+From: Chao Yu <chao2.yu@samsung.com>
+Date: Mon, 17 Mar 2014 16:35:06 +0800
+Subject: [PATCH 042/100] f2fs: introduce f2fs_has_xattr_block for better
+ readability
+
+This patch introduces a help function f2fs_has_xattr_block for better
+readability.
+
+Signed-off-by: Chao Yu <chao2.yu@samsung.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk.kim@samsung.com>
+Signed-off-by: artas182x <artas182x@gmail.com>
+---
+ fs/f2fs/f2fs.h | 5 +++++
+ fs/f2fs/node.c | 4 ++--
+ fs/f2fs/node.h | 2 +-
+ 3 files changed, 8 insertions(+), 3 deletions(-)
+
+diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+index 4ffa6f3..ef3592e 100644
+--- a/fs/f2fs/f2fs.h
++++ b/fs/f2fs/f2fs.h
+@@ -637,6 +637,11 @@ static inline int F2FS_HAS_BLOCKS(struct inode *inode)
+ 		return inode->i_blocks > F2FS_DEFAULT_ALLOCATED_BLOCKS;
+ }
+ 
++static inline bool f2fs_has_xattr_block(unsigned int ofs)
++{
++	return ofs == XATTR_NODE_OFFSET;
++}
++
+ static inline bool inc_valid_block_count(struct f2fs_sb_info *sbi,
+ 				 struct inode *inode, blkcnt_t count)
+ {
+diff --git a/fs/f2fs/node.c b/fs/f2fs/node.c
+index dfd319d..b493dfb 100644
+--- a/fs/f2fs/node.c
++++ b/fs/f2fs/node.c
+@@ -836,7 +836,7 @@ struct page *new_node_page(struct dnode_of_data *dn,
+ 	SetPageUptodate(page);
+ 	set_page_dirty(page);
+ 
+-	if (ofs == XATTR_NODE_OFFSET)
++	if (f2fs_has_xattr_block(ofs))
+ 		F2FS_I(dn->inode)->i_xattr_nid = dn->nid;
+ 
+ 	dn->node_page = page;
+@@ -1531,7 +1531,7 @@ bool recover_xattr_data(struct inode *inode, struct page *page, block_t blkaddr)
+ 
+ 	recover_inline_xattr(inode, page);
+ 
+-	if (ofs_of_node(page) != XATTR_NODE_OFFSET)
++	if (!f2fs_has_xattr_block(ofs_of_node(page)))
+ 		return false;
+ 
+ 	/* 1: invalidate the previous xattr nid */
+diff --git a/fs/f2fs/node.h b/fs/f2fs/node.h
+index 4dea719..ee6d286 100644
+--- a/fs/f2fs/node.h
++++ b/fs/f2fs/node.h
+@@ -242,7 +242,7 @@ static inline bool IS_DNODE(struct page *node_page)
+ {
+ 	unsigned int ofs = ofs_of_node(node_page);
+ 
+-	if (ofs == XATTR_NODE_OFFSET)
++	if (f2fs_has_xattr_block(ofs))
+ 		return false;
+ 
+ 	if (ofs == 3 || ofs == 4 + NIDS_PER_BLOCK ||
+-- 
+1.9.1
+

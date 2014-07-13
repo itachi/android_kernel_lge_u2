@@ -1,0 +1,39 @@
+From 4e19333463e342bfb9bb959308726a19a2093a5c Mon Sep 17 00:00:00 2001
+From: Jaegeuk Kim <jaegeuk.kim@samsung.com>
+Date: Tue, 1 Apr 2014 17:38:26 +0900
+Subject: [PATCH 057/100] f2fs: return -EIO when node id is not matched
+
+During the cleaing of node segments, F2FS can get errored node blocks due to
+data race between node page lock and its valid bitmap operations.
+In that case, it needs to return an error to skip such the obsolete block copy.
+
+Signed-off-by: Jaegeuk Kim <jaegeuk.kim@samsung.com>
+Signed-off-by: artas182x <artas182x@gmail.com>
+---
+ fs/f2fs/node.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/fs/f2fs/node.c b/fs/f2fs/node.c
+index fa41363..e22ce4c 100644
+--- a/fs/f2fs/node.c
++++ b/fs/f2fs/node.c
+@@ -958,7 +958,7 @@ repeat:
+ 		goto got_it;
+ 
+ 	lock_page(page);
+-	if (unlikely(!PageUptodate(page))) {
++	if (unlikely(!PageUptodate(page) || nid != nid_of_node(page))) {
+ 		f2fs_put_page(page, 1);
+ 		return ERR_PTR(-EIO);
+ 	}
+@@ -967,7 +967,6 @@ repeat:
+ 		goto repeat;
+ 	}
+ got_it:
+-	f2fs_bug_on(nid != nid_of_node(page));
+ 	mark_page_accessed(page);
+ 	return page;
+ }
+-- 
+1.9.1
+

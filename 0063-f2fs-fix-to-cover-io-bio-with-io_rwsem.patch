@@ -1,0 +1,39 @@
+From b3b01b12707c181d96fbef1fea77522ab4d4685f Mon Sep 17 00:00:00 2001
+From: Jaegeuk Kim <jaegeuk.kim@samsung.com>
+Date: Wed, 2 Apr 2014 09:04:42 +0900
+Subject: [PATCH 063/100] f2fs: fix to cover io->bio with io_rwsem
+
+In the f2fs_wait_on_page_writeback, io->bio should be covered by io_rwsem.
+Otherwise, the bio pointer can become a dangling pointer due to data races.
+
+Signed-off-by: Jaegeuk Kim <jaegeuk.kim@samsung.com>
+Signed-off-by: artas182x <artas182x@gmail.com>
+---
+ fs/f2fs/segment.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/fs/f2fs/segment.c b/fs/f2fs/segment.c
+index cb49e63..f799c6a 100644
+--- a/fs/f2fs/segment.c
++++ b/fs/f2fs/segment.c
+@@ -1049,15 +1049,14 @@ static inline bool is_merged_page(struct f2fs_sb_info *sbi,
+ {
+ 	enum page_type btype = PAGE_TYPE_OF_BIO(type);
+ 	struct f2fs_bio_info *io = &sbi->write_io[btype];
+-	struct bio *bio = io->bio;
+ 	struct bio_vec *bvec;
+ 	int i;
+ 
+ 	down_read(&io->io_rwsem);
+-	if (!bio)
++	if (!io->bio)
+ 		goto out;
+ 
+-	bio_for_each_segment_all(bvec, bio, i) {
++	bio_for_each_segment_all(bvec, io->bio, i) {
+ 		if (page == bvec->bv_page) {
+ 			up_read(&io->io_rwsem);
+ 			return true;
+-- 
+1.9.1
+

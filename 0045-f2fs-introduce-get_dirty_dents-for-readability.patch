@@ -1,0 +1,60 @@
+From c510d6d09be29bb95b4cc059db2acc21f3ed01bf Mon Sep 17 00:00:00 2001
+From: Jaegeuk Kim <jaegeuk.kim@samsung.com>
+Date: Tue, 18 Mar 2014 12:33:06 +0900
+Subject: [PATCH 045/100] f2fs: introduce get_dirty_dents for readability
+
+The get_dirty_dents gives us the number of dirty dentry pages.
+
+Signed-off-by: Jaegeuk Kim <jaegeuk.kim@samsung.com>
+Signed-off-by: artas182x <artas182x@gmail.com>
+---
+ fs/f2fs/checkpoint.c | 2 +-
+ fs/f2fs/f2fs.h       | 5 +++++
+ fs/f2fs/inode.c      | 2 +-
+ 3 files changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/fs/f2fs/checkpoint.c b/fs/f2fs/checkpoint.c
+index c3888c5..bd711c3 100644
+--- a/fs/f2fs/checkpoint.c
++++ b/fs/f2fs/checkpoint.c
+@@ -618,7 +618,7 @@ void remove_dirty_dir_inode(struct inode *inode)
+ 		return;
+ 
+ 	spin_lock(&sbi->dir_inode_lock);
+-	if (atomic_read(&F2FS_I(inode)->dirty_dents)) {
++	if (get_dirty_dents(inode)) {
+ 		spin_unlock(&sbi->dir_inode_lock);
+ 		return;
+ 	}
+diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+index ef3592e..0104415 100644
+--- a/fs/f2fs/f2fs.h
++++ b/fs/f2fs/f2fs.h
+@@ -704,6 +704,11 @@ static inline int get_pages(struct f2fs_sb_info *sbi, int count_type)
+ 	return atomic_read(&sbi->nr_pages[count_type]);
+ }
+ 
++static inline int get_dirty_dents(struct inode *inode)
++{
++	return atomic_read(&F2FS_I(inode)->dirty_dents);
++}
++
+ static inline int get_blocktype_secs(struct f2fs_sb_info *sbi, int block_type)
+ {
+ 	unsigned int pages_per_sec = sbi->segs_per_sec *
+diff --git a/fs/f2fs/inode.c b/fs/f2fs/inode.c
+index 439db5e..55c3074 100644
+--- a/fs/f2fs/inode.c
++++ b/fs/f2fs/inode.c
+@@ -273,7 +273,7 @@ void f2fs_evict_inode(struct inode *inode)
+ 			inode->i_ino == F2FS_META_INO(sbi))
+ 		goto no_delete;
+ 
+-	f2fs_bug_on(atomic_read(&F2FS_I(inode)->dirty_dents));
++	f2fs_bug_on(get_dirty_dents(inode));
+ 	remove_dirty_dir_inode(inode);
+ 
+ 	if (inode->i_nlink || is_bad_inode(inode))
+-- 
+1.9.1
+

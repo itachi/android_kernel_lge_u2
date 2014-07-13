@@ -1,0 +1,32 @@
+From 4ab4f63f7ecc0de59f42952c40262f485391b403 Mon Sep 17 00:00:00 2001
+From: Chao Yu <chao2.yu@samsung.com>
+Date: Sat, 22 Mar 2014 14:59:45 +0800
+Subject: [PATCH 059/100] f2fs: avoid unneeded lookup when xattr name length is
+ too long
+
+In f2fs_setxattr we have limit this attribute name length, so we should also
+check it in f2fs_getxattr to avoid useless lookup caused by invalid name length.
+
+Signed-off-by: Chao Yu <chao2.yu@samsung.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk.kim@samsung.com>
+Signed-off-by: artas182x <artas182x@gmail.com>
+---
+ fs/f2fs/xattr.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/fs/f2fs/xattr.c b/fs/f2fs/xattr.c
+index acd7158..359a467 100644
+--- a/fs/f2fs/xattr.c
++++ b/fs/f2fs/xattr.c
+@@ -425,6 +425,8 @@ int f2fs_getxattr(struct inode *inode, int name_index, const char *name,
+ 	if (name == NULL)
+ 		return -EINVAL;
+ 	name_len = strlen(name);
++	if (name_len > F2FS_NAME_LEN)
++		return -ERANGE;
+ 
+ 	base_addr = read_all_xattrs(inode, NULL);
+ 	if (!base_addr)
+-- 
+1.9.1
+

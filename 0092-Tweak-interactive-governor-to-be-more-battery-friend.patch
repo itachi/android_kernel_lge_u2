@@ -1,0 +1,83 @@
+From a68a1ce4998814b54d9185c4212f6c4da1bf8f89 Mon Sep 17 00:00:00 2001
+From: artas182x <artas182x@gmail.com>
+Date: Sun, 13 Jul 2014 19:08:47 +0200
+Subject: [PATCH 092/100] Tweak interactive governor to be more battery
+ friendly
+
+---
+ arch/arm/mach-omap2/opp4xxx_data.c    |  2 +-
+ drivers/cpufreq/cpufreq_interactive.c | 15 +++++++++------
+ 2 files changed, 10 insertions(+), 7 deletions(-)
+
+diff --git a/arch/arm/mach-omap2/opp4xxx_data.c b/arch/arm/mach-omap2/opp4xxx_data.c
+index 0f77bfd..e1731f3 100644
+--- a/arch/arm/mach-omap2/opp4xxx_data.c
++++ b/arch/arm/mach-omap2/opp4xxx_data.c
+@@ -183,7 +183,7 @@ static struct omap_opp_def __initdata omap443x_opp_def_list[] = {
+ 	/* MPU OPP1 - OPP50 */
+ 	OPP_INITIALIZER("mpu", "dpll_mpu_ck", "mpu", true, 320000000, OMAP4430_VDD_MPU_OPP50_UV),
+ 	/* MPU OPP2 - OPP100 */
+-	OPP_INITIALIZER("mpu", "dpll_mpu_ck", "mpu", true, 600000000, OMAP4430_VDD_MPU_OPP100_UV),
++	OPP_INITIALIZER("mpu", "dpll_mpu_ck", "mpu", true, 620000000, OMAP4430_VDD_MPU_OPP100_UV),
+ 	/* MPU OPP3 - OPP-Turbo */
+ 	OPP_INITIALIZER("mpu", "dpll_mpu_ck", "mpu", true, 840000000, OMAP4430_VDD_MPU_OPPTURBO_UV),
+ 	/* MPU OPP4 - OPP-NT */
+diff --git a/drivers/cpufreq/cpufreq_interactive.c b/drivers/cpufreq/cpufreq_interactive.c
+index a3a7bc2..6640f26 100644
+--- a/drivers/cpufreq/cpufreq_interactive.c
++++ b/drivers/cpufreq/cpufreq_interactive.c
+@@ -63,14 +63,15 @@ static spinlock_t speedchange_cpumask_lock;
+ static struct mutex gov_lock;
+ 
+ /* Hi speed to bump to from lo speed when load burst (default max) */
+-static unsigned int hispeed_freq;
++#define DEFAULT_HISPEED_FREQ 620000
++static unsigned int hispeed_freq = DEFAULT_HISPEED_FREQ;
+ 
+ /* Go to hi speed when CPU load at or above this value. */
+ #define DEFAULT_GO_HISPEED_LOAD 99
+ static unsigned long go_hispeed_load = DEFAULT_GO_HISPEED_LOAD;
+ 
+ /* Target load.  Lower values result in higher CPU speeds. */
+-#define DEFAULT_TARGET_LOAD 90
++#define DEFAULT_TARGET_LOAD 99
+ static unsigned int default_target_loads[] = {DEFAULT_TARGET_LOAD};
+ static spinlock_t target_loads_lock;
+ static unsigned int *target_loads = default_target_loads;
+@@ -79,13 +80,13 @@ static int ntarget_loads = ARRAY_SIZE(default_target_loads);
+ /*
+  * The minimum amount of time to spend at a frequency before we can ramp down.
+  */
+-#define DEFAULT_MIN_SAMPLE_TIME (80 * USEC_PER_MSEC)
++#define DEFAULT_MIN_SAMPLE_TIME (40 * USEC_PER_MSEC)
+ static unsigned long min_sample_time = DEFAULT_MIN_SAMPLE_TIME;
+ 
+ /*
+  * The sample rate of the timer used to increase frequency
+  */
+-#define DEFAULT_TIMER_RATE (20 * USEC_PER_MSEC)
++#define DEFAULT_TIMER_RATE (25 * USEC_PER_MSEC)
+ static unsigned long timer_rate = DEFAULT_TIMER_RATE;
+ #ifdef CONFIG_OMAP4_DPLL_CASCADING
+ static unsigned long default_timer_rate = DEFAULT_TIMER_RATE;
+@@ -95,13 +96,15 @@ static unsigned long default_timer_rate = DEFAULT_TIMER_RATE;
+  * Wait this long before raising speed above hispeed, by default a single
+  * timer interval.
+  */
+-#define DEFAULT_ABOVE_HISPEED_DELAY DEFAULT_TIMER_RATE
++#define DEFAULT_ABOVE_HISPEED_DELAY 10000
+ static unsigned long above_hispeed_delay_val = DEFAULT_ABOVE_HISPEED_DELAY;
+ 
+ /* Non-zero means indefinite speed boost active */
+ static int boost_val;
++/* 500ms - 0.5s */
++#define DEFAULT_BOOSTPULSE_DURATION 500000
+ /* Duration of a boot pulse in usecs */
+-static int boostpulse_duration_val = DEFAULT_MIN_SAMPLE_TIME;
++static int boostpulse_duration_val = DEFAULT_BOOSTPULSE_DURATION;
+ /* End time of boost pulse in ktime converted to usecs */
+ static u64 boostpulse_endtime;
+ 
+-- 
+1.9.1
+

@@ -1,0 +1,112 @@
+From 9ca50eaf3af6d9f0501551fc5938f1dd40f5058f Mon Sep 17 00:00:00 2001
+From: Jaegeuk Kim <jaegeuk.kim@samsung.com>
+Date: Tue, 18 Mar 2014 12:40:49 +0900
+Subject: [PATCH 046/100] f2fs: avoid small data writes by skipping writepages
+
+This patch introduces nr_pages_to_skip(sbi, type) to determine writepages can
+be skipped.
+The dentry, node, and meta pages can be conrolled by F2FS without breaking the
+FS consistency.
+
+Signed-off-by: Jaegeuk Kim <jaegeuk.kim@samsung.com>
+Signed-off-by: artas182x <artas182x@gmail.com>
+---
+ fs/f2fs/checkpoint.c |  4 ++--
+ fs/f2fs/data.c       |  4 ++++
+ fs/f2fs/node.c       |  8 +-------
+ fs/f2fs/segment.h    | 19 +++++++++++++++++++
+ 4 files changed, 26 insertions(+), 9 deletions(-)
+
+diff --git a/fs/f2fs/checkpoint.c b/fs/f2fs/checkpoint.c
+index bd711c3..497452f 100644
+--- a/fs/f2fs/checkpoint.c
++++ b/fs/f2fs/checkpoint.c
+@@ -186,7 +186,7 @@ static int f2fs_write_meta_pages(struct address_space *mapping,
+ 				struct writeback_control *wbc)
+ {
+ 	struct f2fs_sb_info *sbi = F2FS_SB(mapping->host->i_sb);
+-	int nrpages = MAX_BIO_BLOCKS(max_hw_blocks(sbi));
++	int nrpages = nr_pages_to_skip(sbi, META);
+ 	long written;
+ 
+ 	if (wbc->for_kupdate)
+@@ -681,7 +681,7 @@ retry:
+ 	inode = igrab(entry->inode);
+ 	spin_unlock(&sbi->dir_inode_lock);
+ 	if (inode) {
+-		filemap_flush(inode->i_mapping);
++		filemap_fdatawrite(inode->i_mapping);
+ 		iput(inode);
+ 	} else {
+ 		/*
+diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
+index 5516f8d..d791f65 100644
+--- a/fs/f2fs/data.c
++++ b/fs/f2fs/data.c
+@@ -873,6 +873,10 @@ static int f2fs_write_data_pages(struct address_space *mapping,
+ 	if (!mapping->a_ops->writepage)
+ 		return 0;
+ 
++	if (S_ISDIR(inode->i_mode) && wbc->sync_mode == WB_SYNC_NONE &&
++			get_dirty_dents(inode) < nr_pages_to_skip(sbi, DATA))
++		return 0;
++
+ 	if (wbc->nr_to_write < MAX_DESIRED_PAGES_WP) {
+ 		desired_nrtw = MAX_DESIRED_PAGES_WP;
+ 		excess_nrtw = desired_nrtw - wbc->nr_to_write;
+diff --git a/fs/f2fs/node.c b/fs/f2fs/node.c
+index b493dfb..abac74e 100644
+--- a/fs/f2fs/node.c
++++ b/fs/f2fs/node.c
+@@ -1197,12 +1197,6 @@ redirty_out:
+ 	return AOP_WRITEPAGE_ACTIVATE;
+ }
+ 
+-/*
+- * It is very important to gather dirty pages and write at once, so that we can
+- * submit a big bio without interfering other data writes.
+- * Be default, 512 pages (2MB) * 3 node types, is more reasonable.
+- */
+-#define COLLECT_DIRTY_NODES	1536
+ static int f2fs_write_node_pages(struct address_space *mapping,
+ 			    struct writeback_control *wbc)
+ {
+@@ -1213,7 +1207,7 @@ static int f2fs_write_node_pages(struct address_space *mapping,
+ 	f2fs_balance_fs_bg(sbi);
+ 
+ 	/* collect a number of dirty node pages and write together */
+-	if (get_pages(sbi, F2FS_DIRTY_NODES) < COLLECT_DIRTY_NODES)
++	if (get_pages(sbi, F2FS_DIRTY_NODES) < nr_pages_to_skip(sbi, NODE))
+ 		return 0;
+ 
+ 	/* if mounting is failed, skip writing node pages */
+diff --git a/fs/f2fs/segment.h b/fs/f2fs/segment.h
+index c3d5e36..bbd9761 100644
+--- a/fs/f2fs/segment.h
++++ b/fs/f2fs/segment.h
+@@ -664,3 +664,22 @@ static inline unsigned int max_hw_blocks(struct f2fs_sb_info *sbi)
+ 	struct request_queue *q = bdev_get_queue(bdev);
+ 	return SECTOR_TO_BLOCK(sbi, queue_max_sectors(q));
+ }
++
++/*
++ * It is very important to gather dirty pages and write at once, so that we can
++ * submit a big bio without interfering other data writes.
++ * By default, 512 pages for directory data,
++ * 512 pages (2MB) * 3 for three types of nodes, and
++ * max_bio_blocks for meta are set.
++ */
++static inline int nr_pages_to_skip(struct f2fs_sb_info *sbi, int type)
++{
++	if (type == DATA)
++		return sbi->blocks_per_seg;
++	else if (type == NODE)
++		return 3 * sbi->blocks_per_seg;
++	else if (type == META)
++		return MAX_BIO_BLOCKS(max_hw_blocks(sbi));
++	else
++		return 0;
++}
+-- 
+1.9.1
+

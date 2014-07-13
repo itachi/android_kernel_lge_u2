@@ -1,0 +1,161 @@
+From e2c34ada8f90d179cf2369c0b5d8a8aee39f90e3 Mon Sep 17 00:00:00 2001
+From: DerTeufel <dominik-kassel@gmx.de>
+Date: Sun, 2 Feb 2014 21:10:46 +0100
+Subject: [PATCH 073/100] exfat & ext4: remove i_alloc_sem abuse Add a new
+ rw_semaphore to protect page_mkwrite against truncate. Previous i_alloc_sem
+ was abused for this, but it's going away in this series.
+
+Change-Id: I946fab47403f7d03b6dc4addcfb5e04011a094ca
+
+Conflicts:
+	fs/exfat/exfat_super.c
+	fs/exfat/exfat_super.h
+
+Signed-off-by: artas182x <artas182x@gmail.com>
+---
+ fs/exfat/exfat_super.c |  4 ++--
+ fs/exfat/exfat_super.h |  9 ++++-----
+ fs/ext4/ext4.h         |  3 +++
+ fs/ext4/inode.c        | 18 +++++++++++-------
+ fs/ext4/super.c        |  1 +
+ 5 files changed, 21 insertions(+), 14 deletions(-)
+
+diff --git a/fs/exfat/exfat_super.c b/fs/exfat/exfat_super.c
+index af6394d..8042164 100644
+--- a/fs/exfat/exfat_super.c
++++ b/fs/exfat/exfat_super.c
+@@ -1067,7 +1067,7 @@ static int exfat_setattr(struct dentry *dentry, struct iattr *attr)
+ #else
+ 	if (attr->ia_valid & ATTR_SIZE) {
+ 		old_size = i_size_read(inode);
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,00)
++#if 1//LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,00)
+                 down_write(&EXFAT_I(inode)->truncate_lock);
+ 		truncate_setsize(inode, attr->ia_size);
+ 		_exfat_truncate(inode, old_size);
+@@ -1407,7 +1407,7 @@ static sector_t _exfat_bmap(struct address_space *mapping, sector_t block)
+ 	sector_t blocknr;
+ 
+ 	/* exfat_get_cluster() assumes the requested blocknr isn't truncated. */
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,00)
++#if 1//LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,00)
+ 	down_read(&EXFAT_I(mapping->host)->truncate_lock);
+ 	blocknr = generic_block_bmap(mapping, block, exfat_get_block);
+ 	up_read(&EXFAT_I(mapping->host)->truncate_lock);
+diff --git a/fs/exfat/exfat_super.h b/fs/exfat/exfat_super.h
+index c9201dd..ad4f932 100644
+--- a/fs/exfat/exfat_super.h
++++ b/fs/exfat/exfat_super.h
+@@ -101,11 +101,10 @@ struct exfat_sb_info {
+ struct exfat_inode_info {
+ 	FILE_ID_T fid;
+ 	char  *target;
+-	/* NOTE: mmu_private is 64bits, so must hold ->i_mutex to access */
+-	loff_t mmu_private;         /* physically allocated size */
+-	loff_t i_pos;               /* on-disk position of directory entry or 0 */
+-	struct hlist_node i_hash_fat;	/* hash by i_location */
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,00)
++	loff_t mmu_private;    
++	loff_t i_pos;         
++	struct hlist_node i_hash_fat; 
++#if 1// LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,00)
+ 	struct rw_semaphore truncate_lock;
+ #endif
+ 	struct inode vfs_inode;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index dc81b7c..dea86bd 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -845,6 +845,9 @@ struct ext4_inode_info {
+ 	/* on-disk additional length */
+ 	__u16 i_extra_isize;
+ 
++	/* protect page_mkwrite against truncates */
++	struct rw_semaphore truncate_lock;
++
+ #ifdef CONFIG_QUOTA
+ 	/* quota space reservation, managed internally by quota code */
+ 	qsize_t i_reserved_quota;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index ede823b..659c149 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5392,6 +5392,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 			if (attr->ia_size > sbi->s_bitmap_maxbytes)
+ 				return -EFBIG;
+ 		}
++		down_write(&(EXT4_I(inode)->truncate_lock));
+ 	}
+ 
+ 	if (S_ISREG(inode->i_mode) &&
+@@ -5440,6 +5441,9 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 			ext4_truncate(inode);
+ 	}
+ 
++	if (attr->ia_valid & ATTR_SIZE)
++		up_write(&(EXT4_I(inode)->truncate_lock));
++
+ 	if (!rc) {
+ 		setattr_copy(inode, attr);
+ 		mark_inode_dirty(inode);
+@@ -5885,10 +5889,10 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	struct address_space *mapping = inode->i_mapping;
+ 
+ 	/*
+-	 * Get i_alloc_sem to stop truncates messing with the inode. We cannot
+-	 * get i_mutex because we are already holding mmap_sem.
++	 * Get truncate_lock to stop truncates messing with the inode. We
++	 * cannot get i_mutex because we are already holding mmap_sem.
+ 	 */
+-	down_read(&inode->i_alloc_sem);
++	down_read(&(EXT4_I(inode)->truncate_lock));
+ 	size = i_size_read(inode);
+ 	if (page->mapping != mapping || size <= page_offset(page)
+ 	    || !PageUptodate(page)) {
+@@ -5900,7 +5904,7 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	lock_page(page);
+ 	wait_on_page_writeback(page);
+ 	if (PageMappedToDisk(page)) {
+-		up_read(&inode->i_alloc_sem);
++		up_read(&(EXT4_I(inode)->truncate_lock));
+ 		return VM_FAULT_LOCKED;
+ 	}
+ 
+@@ -5918,7 +5922,7 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	if (page_has_buffers(page)) {
+ 		if (!walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
+ 					ext4_bh_unmapped)) {
+-			up_read(&inode->i_alloc_sem);
++			up_read(&(EXT4_I(inode)->truncate_lock));
+ 			return VM_FAULT_LOCKED;
+ 		}
+ 	}
+@@ -5947,11 +5951,11 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	 */
+ 	lock_page(page);
+ 	wait_on_page_writeback(page);
+-	up_read(&inode->i_alloc_sem);
++	up_read(&(EXT4_I(inode)->truncate_lock));
+ 	return VM_FAULT_LOCKED;
+ out_unlock:
+ 	if (ret)
+ 		ret = VM_FAULT_SIGBUS;
+-	up_read(&inode->i_alloc_sem);
++	up_read(&(EXT4_I(inode)->truncate_lock));
+ 	return ret;
+ }
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index bddee21..b5cbb9a 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -872,6 +872,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
+ 	ei->i_datasync_tid = 0;
+ 	atomic_set(&ei->i_ioend_count, 0);
+ 	atomic_set(&ei->i_aiodio_unwritten, 0);
++	init_rwsem(&ei->truncate_lock);
+ 
+ 	return &ei->vfs_inode;
+ }
+-- 
+1.9.1
+

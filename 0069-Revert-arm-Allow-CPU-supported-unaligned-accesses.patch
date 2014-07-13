@@ -1,0 +1,124 @@
+From f291fd14d1a9e5fe0e374ddc42cada581e53b5f3 Mon Sep 17 00:00:00 2001
+From: artas182x <artas182x@gmail.com>
+Date: Sat, 12 Jul 2014 18:35:56 +0200
+Subject: [PATCH 069/100] Revert "arm: Allow CPU-supported unaligned accesses"
+
+This reverts commit d3fb7f8405fcae0c16d0e6bf7f5d268643f8fdc6.
+---
+ arch/arm/Kconfig                            | 10 ----------
+ arch/arm/configs/cyanogenmod_p760_defconfig |  1 -
+ arch/arm/configs/cyanogenmod_p765_defconfig |  1 -
+ arch/arm/configs/cyanogenmod_p768_defconfig |  1 -
+ arch/arm/configs/cyanogenmod_p769_defconfig |  1 -
+ arch/arm/kernel/head-nommu.S                |  6 +++---
+ arch/arm/kernel/head.S                      |  6 +++---
+ 7 files changed, 6 insertions(+), 20 deletions(-)
+
+diff --git a/arch/arm/Kconfig b/arch/arm/Kconfig
+index 6bff9be..6a73e3b 100644
+--- a/arch/arm/Kconfig
++++ b/arch/arm/Kconfig
+@@ -1654,16 +1654,6 @@ config ALIGNMENT_TRAP
+ 	  correct operation of some network protocols. With an IP-only
+ 	  configuration it is safe to say N, otherwise say Y.
+ 
+-config ALLOW_CPU_ALIGNMENT
+-        bool "Allow CPU-based alignment handling"
+-        default y if ARCH_MSM_SCORPION || ARCH_MSM_SCORPIONMP
+-        help
+-          Advanced ARM processors, such as the Cortex series and ARMv7-based
+-          CPUS are capable of performing unaligned accesses for many types of
+-          memory accesses.  Typically, using a cpu-based alignment fixup is
+-          faster than doing such a fixup in software.  For best performance
+-          on advanced CPUs, say Y here.
+-
+ config UACCESS_WITH_MEMCPY
+ 	bool "Use kernel mem{cpy,set}() for {copy_to,clear}_user() (EXPERIMENTAL)"
+ 	depends on MMU && EXPERIMENTAL
+diff --git a/arch/arm/configs/cyanogenmod_p760_defconfig b/arch/arm/configs/cyanogenmod_p760_defconfig
+index a6fe277..d618695 100755
+--- a/arch/arm/configs/cyanogenmod_p760_defconfig
++++ b/arch/arm/configs/cyanogenmod_p760_defconfig
+@@ -472,7 +472,6 @@ CONFIG_DEFAULT_MMAP_MIN_ADDR=4096
+ CONFIG_FORCE_MAX_ZONEORDER=11
+ # CONFIG_LEDS is not set
+ CONFIG_ALIGNMENT_TRAP=y
+-CONFIG_ALLOW_CPU_ALIGNMENT=y
+ # CONFIG_UACCESS_WITH_MEMCPY is not set
+ # CONFIG_SECCOMP is not set
+ # CONFIG_CC_STACKPROTECTOR is not set
+diff --git a/arch/arm/configs/cyanogenmod_p765_defconfig b/arch/arm/configs/cyanogenmod_p765_defconfig
+index aaeb0fd..8af7e24 100644
+--- a/arch/arm/configs/cyanogenmod_p765_defconfig
++++ b/arch/arm/configs/cyanogenmod_p765_defconfig
+@@ -472,7 +472,6 @@ CONFIG_DEFAULT_MMAP_MIN_ADDR=4096
+ CONFIG_FORCE_MAX_ZONEORDER=11
+ # CONFIG_LEDS is not set
+ CONFIG_ALIGNMENT_TRAP=y
+-CONFIG_ALLOW_CPU_ALIGNMENT=y
+ # CONFIG_UACCESS_WITH_MEMCPY is not set
+ # CONFIG_SECCOMP is not set
+ # CONFIG_CC_STACKPROTECTOR is not set
+diff --git a/arch/arm/configs/cyanogenmod_p768_defconfig b/arch/arm/configs/cyanogenmod_p768_defconfig
+index e647549..873a578 100755
+--- a/arch/arm/configs/cyanogenmod_p768_defconfig
++++ b/arch/arm/configs/cyanogenmod_p768_defconfig
+@@ -472,7 +472,6 @@ CONFIG_DEFAULT_MMAP_MIN_ADDR=4096
+ CONFIG_FORCE_MAX_ZONEORDER=11
+ # CONFIG_LEDS is not set
+ CONFIG_ALIGNMENT_TRAP=y
+-CONFIG_ALLOW_CPU_ALIGNMENT=y
+ # CONFIG_UACCESS_WITH_MEMCPY is not set
+ # CONFIG_SECCOMP is not set
+ # CONFIG_CC_STACKPROTECTOR is not set
+diff --git a/arch/arm/configs/cyanogenmod_p769_defconfig b/arch/arm/configs/cyanogenmod_p769_defconfig
+index 8404ad3..19dd7a5 100644
+--- a/arch/arm/configs/cyanogenmod_p769_defconfig
++++ b/arch/arm/configs/cyanogenmod_p769_defconfig
+@@ -472,7 +472,6 @@ CONFIG_DEFAULT_MMAP_MIN_ADDR=4096
+ CONFIG_FORCE_MAX_ZONEORDER=11
+ # CONFIG_LEDS is not set
+ CONFIG_ALIGNMENT_TRAP=y
+-CONFIG_ALLOW_CPU_ALIGNMENT=y
+ # CONFIG_UACCESS_WITH_MEMCPY is not set
+ # CONFIG_SECCOMP is not set
+ # CONFIG_CC_STACKPROTECTOR is not set
+diff --git a/arch/arm/kernel/head-nommu.S b/arch/arm/kernel/head-nommu.S
+index 3962e0c..6b1e0ad 100644
+--- a/arch/arm/kernel/head-nommu.S
++++ b/arch/arm/kernel/head-nommu.S
+@@ -60,10 +60,10 @@ __after_proc_init:
+ 	 * CP15 system control register value returned in r0 from
+ 	 * the CPU init function.
+ 	 */
+-#ifdef CONFIG_ALLOW_CPU_ALIGNMENT
+-	bic	r0, r0, #CR_A
++#ifdef CONFIG_ALIGNMENT_TRAP
++	orr	r0, r0, #CR_A
+ #else
+-	orr  r0, r0, #CR_A
++	bic	r0, r0, #CR_A
+ #endif
+ #ifdef CONFIG_CPU_DCACHE_DISABLE
+ 	bic	r0, r0, #CR_C
+diff --git a/arch/arm/kernel/head.S b/arch/arm/kernel/head.S
+index 6a18421..673151c 100644
+--- a/arch/arm/kernel/head.S
++++ b/arch/arm/kernel/head.S
+@@ -348,10 +348,10 @@ __secondary_data:
+  *  r13 = *virtual* address to jump to upon completion
+  */
+ __enable_mmu:
+-#ifdef CONFIG_ALLOW_CPU_ALIGNMENT
+-	bic	r0, r0, #CR_A
+-#else
++#if defined(CONFIG_ALIGNMENT_TRAP) && __LINUX_ARM_ARCH__ < 6
+ 	orr	r0, r0, #CR_A
++#else
++	bic	r0, r0, #CR_A
+ #endif
+ #ifdef CONFIG_CPU_DCACHE_DISABLE
+ 	bic	r0, r0, #CR_C
+-- 
+1.9.1
+

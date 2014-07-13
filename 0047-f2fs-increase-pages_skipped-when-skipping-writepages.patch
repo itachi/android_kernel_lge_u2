@@ -1,0 +1,96 @@
+From eb2c3f3f4c970f08328880defd9ff32844bc8b3c Mon Sep 17 00:00:00 2001
+From: Jaegeuk Kim <jaegeuk.kim@samsung.com>
+Date: Tue, 18 Mar 2014 13:43:05 +0900
+Subject: [PATCH 047/100] f2fs: increase pages_skipped when skipping writepages
+
+This patch increases pages_skipped when skipping writepages.
+
+Signed-off-by: Jaegeuk Kim <jaegeuk.kim@samsung.com>
+Signed-off-by: artas182x <artas182x@gmail.com>
+---
+ fs/f2fs/checkpoint.c | 11 ++++++-----
+ fs/f2fs/data.c       |  6 +++++-
+ fs/f2fs/node.c       |  6 +++++-
+ 3 files changed, 16 insertions(+), 7 deletions(-)
+
+diff --git a/fs/f2fs/checkpoint.c b/fs/f2fs/checkpoint.c
+index 497452f..3838685 100644
+--- a/fs/f2fs/checkpoint.c
++++ b/fs/f2fs/checkpoint.c
+@@ -189,12 +189,9 @@ static int f2fs_write_meta_pages(struct address_space *mapping,
+ 	int nrpages = nr_pages_to_skip(sbi, META);
+ 	long written;
+ 
+-	if (wbc->for_kupdate)
+-		return 0;
+-
+ 	/* collect a number of dirty meta pages and write together */
+-	if (get_pages(sbi, F2FS_DIRTY_META) < nrpages)
+-		return 0;
++	if (wbc->for_kupdate || get_pages(sbi, F2FS_DIRTY_META) < nrpages)
++		goto skip_write;
+ 
+ 	/* if mounting is failed, skip writing node pages */
+ 	mutex_lock(&sbi->cp_mutex);
+@@ -202,6 +199,10 @@ static int f2fs_write_meta_pages(struct address_space *mapping,
+ 	mutex_unlock(&sbi->cp_mutex);
+ 	wbc->nr_to_write -= written;
+ 	return 0;
++
++skip_write:
++	wbc->pages_skipped += get_pages(sbi, F2FS_DIRTY_META);
++	return 0;
+ }
+ 
+ long sync_meta_pages(struct f2fs_sb_info *sbi, enum page_type type,
+diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
+index d791f65..cb38b49 100644
+--- a/fs/f2fs/data.c
++++ b/fs/f2fs/data.c
+@@ -875,7 +875,7 @@ static int f2fs_write_data_pages(struct address_space *mapping,
+ 
+ 	if (S_ISDIR(inode->i_mode) && wbc->sync_mode == WB_SYNC_NONE &&
+ 			get_dirty_dents(inode) < nr_pages_to_skip(sbi, DATA))
+-		return 0;
++		goto skip_write;
+ 
+ 	if (wbc->nr_to_write < MAX_DESIRED_PAGES_WP) {
+ 		desired_nrtw = MAX_DESIRED_PAGES_WP;
+@@ -897,6 +897,10 @@ static int f2fs_write_data_pages(struct address_space *mapping,
+ 
+ 	wbc->nr_to_write -= excess_nrtw;
+ 	return ret;
++
++skip_write:
++	wbc->pages_skipped += get_dirty_dents(inode);
++	return 0;
+ }
+ 
+ static int f2fs_write_begin(struct file *file, struct address_space *mapping,
+diff --git a/fs/f2fs/node.c b/fs/f2fs/node.c
+index abac74e..125d773 100644
+--- a/fs/f2fs/node.c
++++ b/fs/f2fs/node.c
+@@ -1208,7 +1208,7 @@ static int f2fs_write_node_pages(struct address_space *mapping,
+ 
+ 	/* collect a number of dirty node pages and write together */
+ 	if (get_pages(sbi, F2FS_DIRTY_NODES) < nr_pages_to_skip(sbi, NODE))
+-		return 0;
++		goto skip_write;
+ 
+ 	/* if mounting is failed, skip writing node pages */
+ 	wbc->nr_to_write = 3 * max_hw_blocks(sbi);
+@@ -1217,6 +1217,10 @@ static int f2fs_write_node_pages(struct address_space *mapping,
+ 	wbc->nr_to_write = nr_to_write - (3 * max_hw_blocks(sbi) -
+ 						wbc->nr_to_write);
+ 	return 0;
++
++skip_write:
++	wbc->pages_skipped += get_pages(sbi, F2FS_DIRTY_NODES);
++	return 0;
+ }
+ 
+ static int f2fs_set_node_page_dirty(struct page *page)
+-- 
+1.9.1
+

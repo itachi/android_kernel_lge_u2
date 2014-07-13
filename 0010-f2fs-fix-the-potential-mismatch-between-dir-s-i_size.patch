@@ -1,0 +1,62 @@
+From 3a9cd049fec8604cdacdb3184f4bc70f91a7a549 Mon Sep 17 00:00:00 2001
+From: Jaegeuk Kim <jaegeuk.kim@samsung.com>
+Date: Mon, 3 Feb 2014 17:24:51 +0900
+Subject: [PATCH 010/100] f2fs: fix the potential mismatch between dir's i_size
+ and i_blocks
+
+This is the erroneous scenario.
+
+                             i_size    on-disk i_size    i_blocks
+__f2fs_add_link()             4096           4096           2
+ get_new_data_page            8192           4096           3
+ -ENOSPC = init_inode_metadata
+ checkpoint                     -            4096           3
+ POR and reboot
+
+__f2fs_add_link()             4096           4096           3
+ page = get_new_data_page (page->index = 1 by NEW_ADDR)
+ add a dentry to the page successfully
+
+f2fs_rmdir()
+ f2fs_empty_dir()             4096           4096           3
+ f2fs_unlink() goes, since there is no valid dentry due to i_size = 4096.
+ But, still there is one dentry in page->index = 1.
+
+So this patch moves the code to write dir->i_size into on-disk i_size in order
+to sync dir's i_size, on-disk i_size, and its i_blocks.
+
+Signed-off-by: Jaegeuk Kim <jaegeuk.kim@samsung.com>
+Signed-off-by: artas182x <artas182x@gmail.com>
+---
+ fs/f2fs/dir.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/fs/f2fs/dir.c b/fs/f2fs/dir.c
+index 87122f4..f898bc6 100644
+--- a/fs/f2fs/dir.c
++++ b/fs/f2fs/dir.c
+@@ -395,9 +395,6 @@ static void update_parent_metadata(struct inode *dir, struct inode *inode,
+ 		set_inode_flag(F2FS_I(dir), FI_UPDATE_DIR);
+ 	}
+ 
+-	if (is_inode_flag_set(F2FS_I(dir), FI_UPDATE_DIR))
+-		update_inode_page(dir);
+-
+ 	if (is_inode_flag_set(F2FS_I(inode), FI_INC_LINK))
+ 		clear_inode_flag(F2FS_I(inode), FI_INC_LINK);
+ }
+@@ -511,7 +508,10 @@ add_dentry:
+ 
+ 	update_parent_metadata(dir, inode, current_depth);
+ fail:
+-	clear_inode_flag(F2FS_I(dir), FI_UPDATE_DIR);
++	if (is_inode_flag_set(F2FS_I(dir), FI_UPDATE_DIR)) {
++		update_inode_page(dir);
++		clear_inode_flag(F2FS_I(dir), FI_UPDATE_DIR);
++	}
+ 	kunmap(dentry_page);
+ 	f2fs_put_page(dentry_page, 1);
+ 	return err;
+-- 
+1.9.1
+

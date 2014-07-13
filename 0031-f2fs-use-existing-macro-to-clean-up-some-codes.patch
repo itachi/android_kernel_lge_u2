@@ -1,0 +1,56 @@
+From 6906d21d3f6050672b4359f08af7653402feb4af Mon Sep 17 00:00:00 2001
+From: Chao Yu <chao2.yu@samsung.com>
+Date: Thu, 27 Feb 2014 19:52:21 +0800
+Subject: [PATCH 031/100] f2fs: use existing macro to clean up some codes
+
+This patch use existing macro F2FS_INODE/NEXT_FREE_BLKADDR to clean up some
+codes.
+
+Signed-off-by: Chao Yu <chao2.yu@samsung.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk.kim@samsung.com>
+Signed-off-by: artas182x <artas182x@gmail.com>
+---
+ fs/f2fs/f2fs.h     | 6 ++----
+ fs/f2fs/recovery.c | 2 +-
+ 2 files changed, 3 insertions(+), 5 deletions(-)
+
+diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+index f90419a..a6b2c48 100644
+--- a/fs/f2fs/f2fs.h
++++ b/fs/f2fs/f2fs.h
+@@ -1000,8 +1000,7 @@ static inline unsigned int addrs_per_inode(struct f2fs_inode_info *fi)
+ 
+ static inline void *inline_xattr_addr(struct page *page)
+ {
+-	struct f2fs_inode *ri;
+-	ri = (struct f2fs_inode *)page_address(page);
++	struct f2fs_inode *ri = F2FS_INODE(page);
+ 	return (void *)&(ri->i_addr[DEF_ADDRS_PER_INODE -
+ 					F2FS_INLINE_XATTR_ADDRS]);
+ }
+@@ -1021,8 +1020,7 @@ static inline int f2fs_has_inline_data(struct inode *inode)
+ 
+ static inline void *inline_data_addr(struct page *page)
+ {
+-	struct f2fs_inode *ri;
+-	ri = (struct f2fs_inode *)page_address(page);
++	struct f2fs_inode *ri = F2FS_INODE(page);
+ 	return (void *)&(ri->i_addr[1]);
+ }
+ 
+diff --git a/fs/f2fs/recovery.c b/fs/f2fs/recovery.c
+index 72adbbf..aef7768 100644
+--- a/fs/f2fs/recovery.c
++++ b/fs/f2fs/recovery.c
+@@ -136,7 +136,7 @@ static int find_fsync_dnodes(struct f2fs_sb_info *sbi, struct list_head *head)
+ 
+ 	/* get node pages in the current segment */
+ 	curseg = CURSEG_I(sbi, CURSEG_WARM_NODE);
+-	blkaddr = START_BLOCK(sbi, curseg->segno) + curseg->next_blkoff;
++	blkaddr = NEXT_FREE_BLKADDR(sbi, curseg);
+ 
+ 	/* read node page */
+ 	page = alloc_page(GFP_F2FS_ZERO);
+-- 
+1.9.1
+

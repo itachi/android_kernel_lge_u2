@@ -1,0 +1,85 @@
+From 00ec13e39473d7fcb93daefc655d81c21a027844 Mon Sep 17 00:00:00 2001
+From: artas182x <artas182x@gmail.com>
+Date: Sat, 12 Jul 2014 18:22:31 +0200
+Subject: [PATCH 068/100] Fix patch error when building outside rom
+
+---
+ arch/arm/mach-omap2/lge/lge_blocking_monitor.c |  2 +-
+ include/linux/lge/lge_blocking_monitor.h       | 24 ++++++++++++++++++++++++
+ kernel/power/suspend.c                         |  2 +-
+ kernel/power/wakelock.c                        |  2 +-
+ 4 files changed, 27 insertions(+), 3 deletions(-)
+ create mode 100644 include/linux/lge/lge_blocking_monitor.h
+
+diff --git a/arch/arm/mach-omap2/lge/lge_blocking_monitor.c b/arch/arm/mach-omap2/lge/lge_blocking_monitor.c
+index c0cb0dc..27460d2 100755
+--- a/arch/arm/mach-omap2/lge/lge_blocking_monitor.c
++++ b/arch/arm/mach-omap2/lge/lge_blocking_monitor.c
+@@ -18,7 +18,7 @@
+ 
+ #include <asm/current.h>
+ 
+-#include <include/lge/lge_blocking_monitor.h>
++#include <linux/lge/lge_blocking_monitor.h>
+ 
+ #define MAX_BLOCKING_MONITOR_NUMBER	10
+ 
+diff --git a/include/linux/lge/lge_blocking_monitor.h b/include/linux/lge/lge_blocking_monitor.h
+new file mode 100644
+index 0000000..1acc3f5
+--- /dev/null
++++ b/include/linux/lge/lge_blocking_monitor.h
+@@ -0,0 +1,24 @@
++/* 
++ * arch/arm/mach-msm/include/mach/lge/lge_blocking_monitor.h
++ *
++ * Copyright (C) 2012 LGE, Inc
++ *
++ * This software is licensed under the terms of the GNU General Public
++ * License version 2, as published by the Free Software Foundation, and
++ * may be copied, distributed, and modified under those terms.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ */
++
++#ifndef __LGE_BLOCKING_MONITOR_H__
++#define __LGE_BLOCKING_MONITOR_H__
++
++int start_monitor_blocking(int id, unsigned long expires);
++int end_monitor_blocking(int id);
++int create_blocking_monitor(const char *name);
++int remove_blocking_monitor(int id);
++
++#endif
+diff --git a/kernel/power/suspend.c b/kernel/power/suspend.c
+index e799d1e..43ac4b2 100755
+--- a/kernel/power/suspend.c
++++ b/kernel/power/suspend.c
+@@ -29,7 +29,7 @@
+ #endif
+ 
+ #ifdef CONFIG_MACH_LGE
+-#include <../../arch/arm/mach-omap2/lge/include/lge/lge_blocking_monitor.h>
++#include <linux/lge/lge_blocking_monitor.h>
+ #endif
+ 
+ #include "power.h"
+diff --git a/kernel/power/wakelock.c b/kernel/power/wakelock.c
+index 23457c3..536a267 100755
+--- a/kernel/power/wakelock.c
++++ b/kernel/power/wakelock.c
+@@ -29,7 +29,7 @@
+ #include "power.h"
+ 
+ #ifdef CONFIG_MACH_LGE
+-#include <../../arch/arm/mach-omap2/lge/include/lge/lge_blocking_monitor.h>
++#include <linux/lge/lge_blocking_monitor.h>
+ #endif
+ 
+ enum {
+-- 
+1.9.1
+

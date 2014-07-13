@@ -1,0 +1,38 @@
+From 2808ab92d29a80e39fbb90c9e08ae5fd9bf7d037 Mon Sep 17 00:00:00 2001
+From: Gu Zheng <guz.fnst@cn.fujitsu.com>
+Date: Fri, 7 Mar 2014 18:43:24 +0800
+Subject: [PATCH 034/100] f2fs: update start nid only once each circle
+
+Integrated a couple of minor changes for better readability suggested by
+Chao Yu.
+
+Signed-off-by: Gu Zheng <guz.fnst@cn.fujitsu.com>
+Reviewed-by: Chao Yu <chao2.yu@samsung.com>
+Signed-off-by: Jaegeuk Kim <jaegeuk.kim@samsung.com>
+Signed-off-by: artas182x <artas182x@gmail.com>
+---
+ fs/f2fs/node.c | 8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
+
+diff --git a/fs/f2fs/node.c b/fs/f2fs/node.c
+index 1fab621..7d86663 100644
+--- a/fs/f2fs/node.c
++++ b/fs/f2fs/node.c
+@@ -1873,11 +1873,9 @@ void destroy_node_manager(struct f2fs_sb_info *sbi)
+ 	while ((found = __gang_lookup_nat_cache(nm_i,
+ 					nid, NATVEC_SIZE, natvec))) {
+ 		unsigned idx;
+-		for (idx = 0; idx < found; idx++) {
+-			struct nat_entry *e = natvec[idx];
+-			nid = nat_get_nid(e) + 1;
+-			__del_from_nat_cache(nm_i, e);
+-		}
++		nid = nat_get_nid(natvec[found - 1]) + 1;
++		for (idx = 0; idx < found; idx++)
++			__del_from_nat_cache(nm_i, natvec[idx]);
+ 	}
+ 	f2fs_bug_on(nm_i->nat_cnt);
+ 	write_unlock(&nm_i->nat_tree_lock);
+-- 
+1.9.1
+

@@ -1,0 +1,190 @@
+From 3e5678254c599dba1938534ffd33a3ccd2019c47 Mon Sep 17 00:00:00 2001
+From: artas182x <artas182x@gmail.com>
+Date: Sun, 13 Jul 2014 21:03:29 +0200
+Subject: [PATCH 096/100] Patch set: Touch fix, undervolt through smartreflex,
+ rebase voltage table
+
+---
+ arch/arm/configs/cyanogenmod_p760_defconfig       |  2 +-
+ arch/arm/mach-omap2/omap2plus-cpufreq.c           |  2 +-
+ arch/arm/mach-omap2/opp4xxx_data.c                |  6 +++---
+ arch/arm/mach-omap2/smartreflex-class1p5.c        |  3 +++
+ drivers/cpufreq/cpufreq_interactive.c             |  8 ++++----
+ drivers/input/touchscreen/lge_touch_core.c        | 25 +++++++++++------------
+ drivers/input/touchscreen/touch_synaptics_s7020.c | 10 ++++-----
+ 7 files changed, 28 insertions(+), 28 deletions(-)
+
+diff --git a/arch/arm/configs/cyanogenmod_p760_defconfig b/arch/arm/configs/cyanogenmod_p760_defconfig
+index 0b723bf..cdf49b1 100755
+--- a/arch/arm/configs/cyanogenmod_p760_defconfig
++++ b/arch/arm/configs/cyanogenmod_p760_defconfig
+@@ -46,7 +46,7 @@ CONFIG_HAVE_KERNEL_LZO=y
+ # CONFIG_KERNEL_LZMA is not set
+ CONFIG_KERNEL_LZO=y
+ CONFIG_DEFAULT_HOSTNAME="(none)"
+-# CONFIG_SWAP is not set
++CONFIG_SWAP=y
+ CONFIG_SYSVIPC=y
+ CONFIG_SYSVIPC_SYSCTL=y
+ # CONFIG_POSIX_MQUEUE is not set
+diff --git a/arch/arm/mach-omap2/omap2plus-cpufreq.c b/arch/arm/mach-omap2/omap2plus-cpufreq.c
+index 61f1dd7..e19d2ad 100644
+--- a/arch/arm/mach-omap2/omap2plus-cpufreq.c
++++ b/arch/arm/mach-omap2/omap2plus-cpufreq.c
+@@ -529,7 +529,7 @@ static void omap_cpu_early_suspend(struct early_suspend *h)
+ 	
+ 		if (likely(battery_friend_active))
+ {
+-max_freq_cap = 320000;		
++max_freq_cap = 340000;		
+ }
+ else
+ {
+diff --git a/arch/arm/mach-omap2/opp4xxx_data.c b/arch/arm/mach-omap2/opp4xxx_data.c
+index e1731f3..56e3cef 100644
+--- a/arch/arm/mach-omap2/opp4xxx_data.c
++++ b/arch/arm/mach-omap2/opp4xxx_data.c
+@@ -181,11 +181,11 @@ struct omap_vdd_dep_info omap443x_vddiva_dep_info[] = {
+ static struct omap_opp_def __initdata omap443x_opp_def_list[] = {
+ 	OPP_INITIALIZER("mpu", "dpll_mpu_ck", "mpu", true, 200000000, OMAP4430_VDD_MPU_OPP25_UV),
+ 	/* MPU OPP1 - OPP50 */
+-	OPP_INITIALIZER("mpu", "dpll_mpu_ck", "mpu", true, 320000000, OMAP4430_VDD_MPU_OPP50_UV),
++	OPP_INITIALIZER("mpu", "dpll_mpu_ck", "mpu", true, 340000000, OMAP4430_VDD_MPU_OPP50_UV),
+ 	/* MPU OPP2 - OPP100 */
+-	OPP_INITIALIZER("mpu", "dpll_mpu_ck", "mpu", true, 620000000, OMAP4430_VDD_MPU_OPP100_UV),
++	OPP_INITIALIZER("mpu", "dpll_mpu_ck", "mpu", true, 600000000, OMAP4430_VDD_MPU_OPP100_UV),
+ 	/* MPU OPP3 - OPP-Turbo */
+-	OPP_INITIALIZER("mpu", "dpll_mpu_ck", "mpu", true, 840000000, OMAP4430_VDD_MPU_OPPTURBO_UV),
++	OPP_INITIALIZER("mpu", "dpll_mpu_ck", "mpu", true, 800000000, OMAP4430_VDD_MPU_OPPTURBO_UV),
+ 	/* MPU OPP4 - OPP-NT */
+ 	OPP_INITIALIZER("mpu", "dpll_mpu_ck", "mpu", true, 1008000000, OMAP4430_VDD_MPU_OPPNITRO_UV),
+ 	/* MPU OPP5 - OPP-SB */
+diff --git a/arch/arm/mach-omap2/smartreflex-class1p5.c b/arch/arm/mach-omap2/smartreflex-class1p5.c
+index d8ca9ac..e45e070 100644
+--- a/arch/arm/mach-omap2/smartreflex-class1p5.c
++++ b/arch/arm/mach-omap2/smartreflex-class1p5.c
+@@ -302,6 +302,9 @@ done_calib:
+ 			u_volt_current);
+ 	}
+ 
++	if(volt_data->volt_nominal == 1010000)
++	volt_data->volt_calibrated = u_volt_safe - 75;
++	else
+ 	volt_data->volt_calibrated = u_volt_safe - 99;
+ 	/* Setup my dynamic voltage for the next calibration for this opp */
+ 	volt_data->volt_dynamic_nominal = omap_get_dyn_nominal(volt_data);
+diff --git a/drivers/cpufreq/cpufreq_interactive.c b/drivers/cpufreq/cpufreq_interactive.c
+index 6640f26..bbe9918 100644
+--- a/drivers/cpufreq/cpufreq_interactive.c
++++ b/drivers/cpufreq/cpufreq_interactive.c
+@@ -63,15 +63,15 @@ static spinlock_t speedchange_cpumask_lock;
+ static struct mutex gov_lock;
+ 
+ /* Hi speed to bump to from lo speed when load burst (default max) */
+-#define DEFAULT_HISPEED_FREQ 620000
++#define DEFAULT_HISPEED_FREQ 600000
+ static unsigned int hispeed_freq = DEFAULT_HISPEED_FREQ;
+ 
+ /* Go to hi speed when CPU load at or above this value. */
+-#define DEFAULT_GO_HISPEED_LOAD 99
++#define DEFAULT_GO_HISPEED_LOAD 80
+ static unsigned long go_hispeed_load = DEFAULT_GO_HISPEED_LOAD;
+ 
+ /* Target load.  Lower values result in higher CPU speeds. */
+-#define DEFAULT_TARGET_LOAD 99
++#define DEFAULT_TARGET_LOAD 90
+ static unsigned int default_target_loads[] = {DEFAULT_TARGET_LOAD};
+ static spinlock_t target_loads_lock;
+ static unsigned int *target_loads = default_target_loads;
+@@ -80,7 +80,7 @@ static int ntarget_loads = ARRAY_SIZE(default_target_loads);
+ /*
+  * The minimum amount of time to spend at a frequency before we can ramp down.
+  */
+-#define DEFAULT_MIN_SAMPLE_TIME (40 * USEC_PER_MSEC)
++#define DEFAULT_MIN_SAMPLE_TIME (80 * USEC_PER_MSEC)
+ static unsigned long min_sample_time = DEFAULT_MIN_SAMPLE_TIME;
+ 
+ /*
+diff --git a/drivers/input/touchscreen/lge_touch_core.c b/drivers/input/touchscreen/lge_touch_core.c
+index 4eef5e0..131b156 100755
+--- a/drivers/input/touchscreen/lge_touch_core.c
++++ b/drivers/input/touchscreen/lge_touch_core.c
+@@ -824,11 +824,10 @@ int accuracy_filter_func(struct lge_touch_data *ts)
+ 
+ 	// finish the accuracy_filter
+ 	if(ts->accuracy_filter.finish_filter == 1 &&
+-	   (ts->accuracy_filter.his_data.count > ts->accuracy_filter.touch_max_count
+-	    || ts->ts_data.total_num != 1
+-	    || id != 0)){
+-		ts->accuracy_filter.finish_filter = 0;
+-		ts->accuracy_filter.his_data.count = 0;
++	  (ts->accuracy_filter.his_data.count > ts->accuracy_filter.touch_max_count
++ || ts->ts_data.total_num != 1 || ts->ts_data.curr_data[0].id != 0)){
++ ts->accuracy_filter.finish_filter = 0;
++ ts->accuracy_filter.his_data.count = 0;
+ 	}
+ 
+ 	delta_x = (int)ts->accuracy_filter.his_data.x - (int)ts->ts_data.curr_data[0].x_position;
+@@ -2522,7 +2521,7 @@ static int touch_probe(struct i2c_client *client, const struct i2c_device_id *id
+ 			TOUCH_ERR_MSG("FAIL: touch_reset gpio_request\n");
+ 			goto err_assign_platform_data;
+ 		}
+-		gpio_direction_output(ts->pdata->reset_pin, 1);
++		gpio_direction_output(ts->pdata->reset_pin, 0);
+ 	}
+ 
+ 	atomic_set(&ts->device_init, 0);
+@@ -2635,14 +2634,14 @@ static int touch_probe(struct i2c_client *client, const struct i2c_device_id *id
+ 		ts->jitter_filter.adjust_margin = 50;
+ 	}
+ 
+-	/* accuracy solution */
++		/* accuracy solution */
+ 	if (ts->pdata->role->accuracy_filter_enable){
+-		ts->accuracy_filter.ignore_pressure_gap = 5;
+-		ts->accuracy_filter.delta_max = 30;
+-		ts->accuracy_filter.max_pressure = 255;
+-		ts->accuracy_filter.time_to_max_pressure = one_sec / 20;
+-		ts->accuracy_filter.direction_count = one_sec / 6;
+-		ts->accuracy_filter.touch_max_count = one_sec / 2;
++	ts->accuracy_filter.ignore_pressure_gap = 5;
++	ts->accuracy_filter.delta_max = 150;
++	ts->accuracy_filter.max_pressure = 250;
++	ts->accuracy_filter.time_to_max_pressure = one_sec / 20;
++	ts->accuracy_filter.direction_count = one_sec / 4;
++	ts->accuracy_filter.touch_max_count = one_sec / 2;
+ 	}
+ 
+ #if defined(CONFIG_HAS_EARLYSUSPEND)
+diff --git a/drivers/input/touchscreen/touch_synaptics_s7020.c b/drivers/input/touchscreen/touch_synaptics_s7020.c
+index c6b86aa..2324111 100755
+--- a/drivers/input/touchscreen/touch_synaptics_s7020.c
++++ b/drivers/input/touchscreen/touch_synaptics_s7020.c
+@@ -713,6 +713,8 @@ int synaptics_ts_power(struct i2c_client* client, int power_ctrl)
+ 
+ 	switch (power_ctrl) {
+ 	case POWER_OFF:
++		if (ts->pdata->reset_pin > 0)
++			 gpio_set_value(ts->pdata->reset_pin, 0);
+ 		if (ts->pdata->pwr->use_regulator) {
+ 			regulator_disable(ts->regulator_vio);
+ 			regulator_disable(ts->regulator_vdd);
+@@ -729,13 +731,9 @@ int synaptics_ts_power(struct i2c_client* client, int power_ctrl)
+ 		else
+ 			ts->pdata->pwr->power(1);
+ 
+-		/* P2 H/W bug fix */
+-		if (ts->pdata->reset_pin > 0) {
+-			msleep(10);
+-			gpio_set_value(ts->pdata->reset_pin, 0);
+-			msleep(ts->pdata->role->reset_delay);
++		if (ts->pdata->reset_pin > 0)
+ 			gpio_set_value(ts->pdata->reset_pin, 1);
+-		}
++
+ 		break;
+ 	case POWER_SLEEP:
+ 		if (unlikely(touch_i2c_write_byte(client, DEVICE_CONTROL_REG,
+-- 
+1.9.1
+

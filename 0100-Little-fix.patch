@@ -1,0 +1,25 @@
+From 9a1abaca5cef87d1e0c81c76d5c4d0c871f41fc8 Mon Sep 17 00:00:00 2001
+From: artas182x <artas182x@gmail.com>
+Date: Tue, 15 Jul 2014 18:14:47 +0200
+Subject: [PATCH 100/100] Little fix
+
+---
+ arch/arm/mach-omap2/omap2plus-cpufreq.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm/mach-omap2/omap2plus-cpufreq.c b/arch/arm/mach-omap2/omap2plus-cpufreq.c
+index e19d2ad..60f7b9f 100644
+--- a/arch/arm/mach-omap2/omap2plus-cpufreq.c
++++ b/arch/arm/mach-omap2/omap2plus-cpufreq.c
+@@ -529,7 +529,7 @@ static void omap_cpu_early_suspend(struct early_suspend *h)
+ 	
+ 		if (likely(battery_friend_active))
+ {
+-max_freq_cap = 340000;		
++max_freq_cap = 300000;		
+ }
+ else
+ {
+-- 
+1.9.1
+
