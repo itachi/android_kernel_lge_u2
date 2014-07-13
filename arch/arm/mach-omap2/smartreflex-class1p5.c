@@ -302,7 +302,7 @@ done_calib:
 			u_volt_current);
 	}
 
-	volt_data->volt_calibrated = u_volt_safe;
+	volt_data->volt_calibrated = u_volt_safe - 99;
 	/* Setup my dynamic voltage for the next calibration for this opp */
 	volt_data->volt_dynamic_nominal = omap_get_dyn_nominal(volt_data);
 
