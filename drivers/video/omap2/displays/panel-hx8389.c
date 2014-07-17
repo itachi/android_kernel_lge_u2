@@ -139,10 +139,10 @@ static struct panel_config panel_configs[] = {
 			.x_res		= 540,
 			.y_res		= 960,
 			.vfp = 12,
-			.vsw = 4,
+			.vsw = 3,
 			.vbp = 8,
 			.hfp = 20, //20
-			.hsw =10,
+			.hsw =9,
 			.hbp = 47, // 47
 
 		},
