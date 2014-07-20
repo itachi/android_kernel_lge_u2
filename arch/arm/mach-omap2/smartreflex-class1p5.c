@@ -305,7 +305,7 @@ done_calib:
 	if (voltdm->name=="mpu")
 	{
 	if (volt_data->volt_nominal==995000)
-	volt_data->volt_calibrated = u_volt_safe;
+	volt_data->volt_calibrated = u_volt_safe - 40000;
 	else
 	volt_data->volt_calibrated = u_volt_safe - 55000;
 	}

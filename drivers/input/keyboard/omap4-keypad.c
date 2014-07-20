@@ -130,10 +130,10 @@ struct timespec uptime;
 	idle.tv_sec = div_u64_rem(nsec, NSEC_PER_SEC, &rem);
 	idle.tv_nsec = rem;
 
-if (reboot==0)
-reboot = 2;
 if (uptime.tv_sec <= 4)
 reboot = 1;
+else
+reboot = 2;
 
 }
 
@@ -238,19 +238,17 @@ struct sysinfo s_info;
                                                 (keypad_data->keymap[code] == KEY_VOLUMEUP) ? "Vol_UP" : ((keypad_data->keymap[code] == KEY_VOLUMEDOWN) ? "Vol_DOWN" : "HOME"),
                                                 (key_state[col] & (1 << row)) ? "PRESS" : "RELEASE" );
 				
-													if (keypad_data->keymap[code] == KEY_VOLUMEUP)
+if (keypad_data->keymap[code] == KEY_VOLUMEUP)
 {
-	 if (!reboot==2)
-{
-	uptime_show();
-   if (reboot==1)
-{
-
-lge_set_reboot_reason(0x77665533);
+	 if (reboot==0)
+     uptime_show();
+     if (reboot==1)
+     {
+	lge_set_reboot_reason(0x77665533);
 	lge_omap4_prm_global_warm_sw_reset("oem-unlock");
+	}
 }
-}
-}
+
 	
 #else
                     printk("[omap4-keypad] %s KEY %s\n",
