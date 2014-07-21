@@ -3477,7 +3477,7 @@ void dispc_set_gamma_table()
 
 
 #ifdef CONFIG_HX8389_NATURE
-
+int status = 1; /*Nature=1 Amoled=0*/
 
 
 int dispc_set_nature(int enbl)
@@ -3486,6 +3486,8 @@ int j;
 
 if (enbl==0)
 {
+if (status == 0)
+return 0;
 for(j=0;j<GAMMA_TBL_SZ;j++)
 {
 				GammaTable_p760[j] = GammaTable_p760amoled[j];
@@ -3494,9 +3496,12 @@ for(j=0;j<GAMMA_TBL_SZ;j++)
 mdelay(1500);
 //dispc_set_gamma_rgb(OMAP_DSS_CHANNEL_LCD, 0,c,z,n);
 dispc_set_gamma_rgb(OMAP_DSS_CHANNEL_LCD2, 0,c,z,n);
+status = 0;
 }
 if (enbl==1)
 {
+if (status == 1)
+return 0;
 for(j=0;j<GAMMA_TBL_SZ;j++)
 {
 				GammaTable_p760[j] = GammaTable_p760nature[j];
@@ -3505,9 +3510,10 @@ for(j=0;j<GAMMA_TBL_SZ;j++)
 mdelay(1500);
 //dispc_set_gamma_rgb(OMAP_DSS_CHANNEL_LCD, 0,c,z,n);
 dispc_set_gamma_rgb(OMAP_DSS_CHANNEL_LCD2, 0,c,z,n);
+status = 1;
 
 }
-
+return 0;
 }
 #endif
                                                                                          
