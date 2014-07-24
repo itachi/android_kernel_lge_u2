@@ -305,12 +305,12 @@ done_calib:
 	if (voltdm->name=="mpu")
 	{
 	if (volt_data->volt_nominal==995000)
-	volt_data->volt_calibrated = u_volt_safe - 45000;
+	volt_data->volt_calibrated = u_volt_safe - 40000;
 	else
-	volt_data->volt_calibrated = u_volt_safe - 60000;
+	volt_data->volt_calibrated = u_volt_safe - 55000;
 	}
 	else
-	volt_data->volt_calibrated = u_volt_safe - 35000;
+	volt_data->volt_calibrated = u_volt_safe - 30000;
 
 	/* Setup my dynamic voltage for the next calibration for this opp */
 	volt_data->volt_dynamic_nominal = omap_get_dyn_nominal(volt_data);
