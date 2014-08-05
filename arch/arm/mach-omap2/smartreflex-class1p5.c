@@ -310,6 +310,7 @@ done_calib:
  volt_data->volt_margin, volt_data->volt_nominal,
  u_volt_current);
 	}
+}
 
 	volt_data->volt_calibrated = u_volt_safe;
 
