@@ -52,7 +52,7 @@ static ssize_t battery_friend_active_store(struct kobject *kobj,
 
 
 static struct kobj_attribute battery_friend_active_attribute = 
-	__ATTR(Battery_friend_active, 0666,
+	__ATTR(battery_friend_active, 0666,
 		battery_friend_active_show,
 		battery_friend_active_store);
 
