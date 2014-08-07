@@ -102,6 +102,7 @@ struct sound_control {
 static struct sound_control soundcontrol;
 
 void soundcontrol_hp_boost(int new_val);
+int last_boost_val = 0;
 
 struct twl6040_output {
 	u16 active;
@@ -594,11 +595,13 @@ static void twl6040_init_vdd_regs(struct snd_soc_codec *codec)
  */
 void soundcontrol_hp_boost(int new_val)
 {
+
 	int default_value = soundcontrol.default_hp_value;
 	int boosted_value = default_value + new_val;
+	
 
 	twl6040_write(soundcontrol.codec, TWL6040_REG_HSGAIN, boosted_value);
-
+	last_boost_val = new_val;
 	pr_info("Sound Control new Headphones Gain value %d\n", 
 		twl6040_reg_read(soundcontrol.codec->control_data, TWL6040_REG_HSGAIN));
 }
@@ -1147,8 +1150,8 @@ static int twl6040_ep_mode_event(struct snd_soc_dapm_widget *w,
 		priv->power_mode_forced = 1;
 		ret = headset_power_mode(codec, 1);
 	} else {
-		priv->power_mode_forced = 0;
-		ret = headset_power_mode(codec, priv->headset_mode);
+		priv->power_mode_forced = 1;
+		ret = headset_power_mode(codec, 1);
 	}
 
 	return ret;
@@ -1740,6 +1743,8 @@ static int twl6040_put_volsw(struct snd_kcontrol *kcontrol,
 	if (ret < 0)
 		return ret;
 
+	soundcontrol_hp_boost(last_boost_val);
+
 	return 1;
 }
 
@@ -1966,7 +1971,7 @@ static int twl6040_headset_power_put_enum(struct snd_kcontrol *kcontrol,
 
 	ret = headset_power_mode(codec, high_perf);
 	if (!ret)
-		priv->headset_mode = high_perf;
+		priv->headset_mode = 1;
 
 	return ret;
 }
@@ -2943,6 +2948,7 @@ static int twl6040_probe(struct snd_soc_codec *codec)
 	snd_soc_add_controls(codec, twl6040_snd_controls,
 				ARRAY_SIZE(twl6040_snd_controls));
 	twl6040_add_widgets(codec);
+
 
 	soundcontrol.default_hp_value = twl6040_reg_read(codec->control_data, 
 														TWL6040_REG_HSGAIN);

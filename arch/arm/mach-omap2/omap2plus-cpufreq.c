@@ -536,7 +536,7 @@ static void omap_cpu_early_suspend(struct early_suspend *h)
 	
 		if (likely(battery_friend_active))
 {
-max_freq_cap = 300000;		
+max_freq_cap = 600000;		
 }
 else
 {
