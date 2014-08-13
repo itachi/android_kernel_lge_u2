@@ -90,7 +90,7 @@
                                                                
  */
 u32 debug_mask = 0;
-	int reboot = 0;
+	//int reboot = 0;
 
 extern void lge_set_reboot_reason(unsigned int reason);
 extern void lge_omap4_prm_global_warm_sw_reset(const char *cmd);
@@ -111,7 +111,7 @@ struct omap4_keypad {
 	unsigned short keymap[];
 };
 
-void uptime_show()
+/*void uptime_show()
 {
 struct timespec uptime;
 	struct timespec idle;
@@ -135,7 +135,7 @@ reboot = 1;
 else
 reboot = 2;
 
-}
+}*/
 
 /*                                                             
                                                                     
@@ -238,7 +238,7 @@ struct sysinfo s_info;
                                                 (keypad_data->keymap[code] == KEY_VOLUMEUP) ? "Vol_UP" : ((keypad_data->keymap[code] == KEY_VOLUMEDOWN) ? "Vol_DOWN" : "HOME"),
                                                 (key_state[col] & (1 << row)) ? "PRESS" : "RELEASE" );
 				
-if (keypad_data->keymap[code] == KEY_VOLUMEUP)
+/*if (keypad_data->keymap[code] == KEY_VOLUMEUP)
 {
 	 if (reboot==0)
      uptime_show();
@@ -247,7 +247,7 @@ if (keypad_data->keymap[code] == KEY_VOLUMEUP)
 	lge_set_reboot_reason(0x77665533);
 	lge_omap4_prm_global_warm_sw_reset("oem-unlock");
 	}
-}
+}*/
 
 	
 #else

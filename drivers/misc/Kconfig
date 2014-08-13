@@ -576,6 +576,12 @@ config CUSTOM_VOLTAGE
  help
  Say Y here to enable Custom Voltage
 
+config FSYNC_CONTROL
+        bool "Support for FSync Control"
+        default y
+        help
+          Say Y here to enable FSync Control
+
 # RIP-12331 : handling CP Crash of RIL Recovery
 config LGE_MODEM_WATCHER
 	bool "LGE Modem Watcher"
