@@ -206,44 +206,85 @@ static void __cpuinit intelli_plug_boost_fn(struct work_struct *work)
 
 	int nr_cpus = num_online_cpus();
 
-	if (nr_cpus < 2)
-		cpu_up(1);
+	if (intelli_plug_active)
+		if (touch_boost_active)
+			if (nr_cpus < 2)
+				cpu_up(1);
 }
 
-#ifdef CONFIG_INTELLI_PLUG_DUAL
+/*
+static int cmp_nr_running(const void *a, const void *b)
+{
+	return *(unsigned long *)a - *(unsigned long *)b;
+}
+*/
+
+static void update_per_cpu_stat(void)
+{
+	unsigned int cpu;
+	struct ip_cpu_info *l_ip_info;
+
+	for_each_online_cpu(cpu) {
+		l_ip_info = &per_cpu(ip_info, cpu);
+		l_ip_info->cpu_nr_running = avg_cpu_nr_running(cpu);
+#ifdef DEBUG_INTELLI_PLUG
+		pr_info("cpu %u nr_running => %lu\n", cpu,
+			l_ip_info->cpu_nr_running);
+#endif
+	}
+}
+
+static void unplug_cpu(int min_active_cpu)
+{
+	unsigned int cpu;
+	struct ip_cpu_info *l_ip_info;
+	int l_nr_threshold;
+
+	for_each_online_cpu(cpu) {
+		l_nr_threshold =
+			cpu_nr_run_threshold << 1 / (num_online_cpus());
+		if (cpu == 0)
+			continue;
+		l_ip_info = &per_cpu(ip_info, cpu);
+		if (cpu > min_active_cpu)
+			if (l_ip_info->cpu_nr_running < l_nr_threshold)
+				cpu_down(cpu);
+	}
+}
+
 static void __cpuinit intelli_plug_work_fn(struct work_struct *work)
 {
 	unsigned int nr_run_stat;
 	unsigned int cpu_count = 0;
 	unsigned int nr_cpus = 0;
 
-	int decision = 0;
 	int i;
 
-	if (intelli_plug_active == 1) {
+	if (intelli_plug_active) {
 		nr_run_stat = calculate_thread_stats();
+		update_per_cpu_stat();
 #ifdef DEBUG_INTELLI_PLUG
 		pr_info("nr_run_stat: %u\n", nr_run_stat);
 #endif
 		cpu_count = nr_run_stat;
-		// detect artificial loads or constant loads
-		// using msm rqstats
 		nr_cpus = num_online_cpus();
-		if (nr_cpus >= 1)
-			decision = mp_decision();
 
 		if (!suspended) {
+
+			if (persist_count > 0)
+				persist_count--;
+
 			switch (cpu_count) {
 			case 1:
-				if (persist_count > 0)
-					persist_count--;
 			 if (int_hotplug == 0) {			
 			  	//pr_info("case 1: Hotplug locked \n");
 				break;
-			  } else if (int_hotplug == 1) { 
-			       if (persist_count == 0)	
-				   	cpu_down(1);
-				}			
+			  } else if (int_hotplug == 1) {
+				if (persist_count == 0) {
+					//take down everyone
+					unplug_cpu(0);
+				}
+				 	}		
 #ifdef DEBUG_INTELLI_PLUG
 				pr_info("case 1: %u\n", persist_count);
 #endif
@@ -251,101 +292,6 @@ static void __cpuinit intelli_plug_work_fn(struct work_struct *work)
 			case 2:
 				if (persist_count == 0)
 					persist_count = DUAL_PERSISTENCE;
-				if (nr_cpus < 2) {
-					for (i = 1; i < cpu_count; i++)
-						cpu_up(i);
-				}
-#ifdef DEBUG_INTELLI_PLUG
-				pr_info("case 2: %u\n", persist_count);
-#endif
-				break;
-			default:
-				pr_err("Run Stat Error: Bad value %u\n", nr_run_stat);
-				break;
-			}
-		}
-#ifdef DEBUG_INTELLI_PLUG
-		else
-			pr_info("intelli_plug is suspened!\n");
-#endif
-	}
-	queue_delayed_work_on(0, intelliplug_wq, &intelli_plug_work,
-		msecs_to_jiffies(sampling_time));
-}
-#else
-static void __cpuinit intelli_plug_work_fn(struct work_struct *work)
-{
-	unsigned int nr_run_stat;
-	unsigned int cpu_count = 0;
-	unsigned int nr_cpus = 0;
-
-	int decision = 0;
-	int i;
-
-	if (intelli_plug_active == 1) {
-		nr_run_stat = calculate_thread_stats();
-#ifdef DEBUG_INTELLI_PLUG
-		pr_info("nr_run_stat: %u\n", nr_run_stat);
-#endif
-		cpu_count = nr_run_stat;
-		// detect artificial loads or constant loads
-		// using msm rqstats
-		nr_cpus = num_online_cpus();
-		if (!eco_mode_active && (nr_cpus >= 1 && nr_cpus < 4)) {
-			decision = mp_decision();
-			if (decision) {
-				switch (nr_cpus) {
-				case 2:
-					cpu_count = 3;
-#ifdef DEBUG_INTELLI_PLUG
-					pr_info("nr_run(2) => %u\n", nr_run_stat);
-#endif
-					break;
-				case 3:
-					cpu_count = 4;
-#ifdef DEBUG_INTELLI_PLUG
-					pr_info("nr_run(3) => %u\n", nr_run_stat);
-#endif
-					break;
-				}
-			}
-		}
-		/* it's busy.. lets help it a bit */
-		if (cpu_count > 2) {
-			if (busy_persist_count == 0) {
-				sampling_time = BUSY_SAMPLING_MS;
-				busy_persist_count = BUSY_PERSISTENCE;
-			}
-		} else {
-			if (busy_persist_count > 0)
-				busy_persist_count--;
-			else
-				sampling_time = DEF_SAMPLING_MS;
-		}
-
-		if (!suspended) {
-			switch (cpu_count) {
-			case 1:
-			 if (int_hotplug == 0) {			
-			  	//pr_info("case 1: Hotplug locked \n");
-				break;
-			  } else if (int_hotplug == 1) {
-				if (persist_count > 0)
-					persist_count--;
-				if (persist_count == 0) {
-					//take down everyone
-					for (i = 3; i > 0; i--)
-						cpu_down(i);
-					}
-				}
-#ifdef DEBUG_INTELLI_PLUG
-				pr_info("case 1: %u\n", persist_count);
-#endif
-				break;
-			case 2:
-				persist_count = DUAL_CORE_PERSISTENCE;
-				if (!decision)
-					persist_count = DUAL_CORE_PERSISTENCE / CPU_DOWN_FACTOR;
 				if (nr_cpus < 2) {
 					for (i = 1; i < cpu_count; i++)
 						cpu_up(i);
@@ -605,7 +551,7 @@ int __init intelli_plug_init(void)
 		nr_run_profile_sel = NR_RUN_ECO_MODE_PROFILE;
 	}
 
-	rc = input_register_handler(&intelli_plug_input_handler);
+	//rc = input_register_handler(&intelli_plug_input_handler);
 #ifdef CONFIG_POWERSUSPEND
 	register_power_suspend(&intelli_plug_power_suspend_driver);
 #endif
