@@ -171,7 +171,6 @@ config CPU_FREQ_DEFAULT_GOV_INTELLIACTIVE
 	  you to get a full dynamic cpu frequency capable system by simply
 	  loading your cpufreq low-level hardware driver, using the
 	  'interactive' governor for latency-sensitive workloads.
-
 endchoice
 
 config CPU_FREQ_GOV_PERFORMANCE
@@ -365,7 +364,6 @@ config CPUFREQ_ID_PERFLOCK
 	depends on CPU_FREQ_GOV_INTELLIDEMAND
 	default	y
 	help
-		Minimum CPU performance lock for Intellidemand governor
 		Minimum CPU performance lock for Intellidemand governor
 
 menu "x86 CPU frequency scaling drivers"
