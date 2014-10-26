@@ -717,4 +717,3 @@ out:
 	return r;
 }
 device_initcall(omap4_opp_init);
-

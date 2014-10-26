@@ -83,7 +83,7 @@ extern bool battery_friend_active;
 
 #include "smartreflex.h"
 
-#define OMAP4430_CPU_DEFAULT_MIN_FREQUENCY	200000
+#define OMAP4430_CPU_DEFAULT_MIN_FREQUENCY	300000
 #define OMAP4430_CPU_DEFAULT_MAX_FREQUENCY	1008000
 
 #endif

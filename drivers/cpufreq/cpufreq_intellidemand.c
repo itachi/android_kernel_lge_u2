@@ -150,6 +150,7 @@ static DEFINE_MUTEX(dbs_mutex);
 static struct workqueue_struct *input_wq;
 
 static DEFINE_PER_CPU(struct work_struct, dbs_refresh_work);
+extern bool battery_friend_active;
 
 static struct dbs_tuners {
 	unsigned int sampling_rate;
@@ -1471,10 +1472,12 @@ static void do_dbs_timer(struct work_struct *work)
 			msecs_limit_total = 0;
 			load_limit_index = 0;
 			active_state = true;
+            battery_friend_active = false;
 		}
 	}
 	else if (lmf_browsing_state && lmf_screen_state) // lmf_browsing_state -> TRUE
 	{
+        extern bool battery_friend_active;
 		struct cpufreq_policy *policy;
 		unsigned long load_state_cpu = 0;
 		unsigned int delay_msec = 0;
@@ -1561,6 +1564,8 @@ static void do_dbs_timer(struct work_struct *work)
 								msecs_limit_total = 0;
 								load_limit_index = 0;
 								active_state = false;
+                                battery_friend_active = true;
+                                
 #if 0
 								/* wake up the 2nd core */
 								if (num_online_cpus() < 2)
@@ -1611,6 +1616,7 @@ static void do_dbs_timer(struct work_struct *work)
 								msecs_limit_total = 0;
 								load_limit_index = 0;
 								active_state = true;
+                                battery_friend_active = false;
 
 								/* set freq to 1.5GHz */
 								//pr_info("LMF: CPU0 set max freq to: %lu\n", lmf_active_max_limit);
